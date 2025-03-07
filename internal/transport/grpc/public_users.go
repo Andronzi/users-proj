@@ -11,6 +11,7 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -137,4 +138,34 @@ func (s *PublicUserServiceServer) Revalidate(ctx context.Context, req *users_v1.
 		Token:   newTokenString,
 		Message: "Token revalidated successfully",
 	}, nil
+}
+
+func (s *InternalUserServiceServer) Logout(ctx context.Context, req *users_v1.LogoutRequest) (*users_v1.LogoutResponse, error) {
+	md, ok := metadata.FromIncomingContext(ctx)
+	if !ok || len(md["authorization"]) == 0 {
+		return nil, status.Error(codes.Unauthenticated, "Authorization header is missing")
+	}
+	tokenString := md["authorization"][0]
+
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(s.SecretKey), nil
+	})
+	if err != nil || !token.Valid {
+		return nil, status.Error(codes.Unauthenticated, "Invalid token")
+	}
+
+	ttl := time.Unix(claims.ExpiresAt, 0).Sub(time.Now())
+	if ttl <= 0 {
+		return &users_v1.LogoutResponse{Message: "Token already expired"}, nil
+	}
+
+	if err := s.Redis.SAdd(ctx, "token_blacklist", tokenString).Err(); err != nil {
+		return nil, status.Error(codes.Internal, "Failed to blacklist token")
+	}
+	if err := s.Redis.Expire(ctx, "token_blacklist", ttl).Err(); err != nil {
+		return nil, status.Error(codes.Internal, "Failed to set TTL")
+	}
+
+	return &users_v1.LogoutResponse{Message: "Logged out successfully"}, nil
 }

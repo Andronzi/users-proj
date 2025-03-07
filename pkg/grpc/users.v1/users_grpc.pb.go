@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	PublicUserService_Register_FullMethodName   = "/users.v1.PublicUserService/Register"
 	PublicUserService_Login_FullMethodName      = "/users.v1.PublicUserService/Login"
+	PublicUserService_Logout_FullMethodName     = "/users.v1.PublicUserService/Logout"
 	PublicUserService_Revalidate_FullMethodName = "/users.v1.PublicUserService/Revalidate"
 )
 
@@ -30,6 +31,7 @@ const (
 type PublicUserServiceClient interface {
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
+	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
 	Revalidate(ctx context.Context, in *RevalidateRequest, opts ...grpc.CallOption) (*RevalidateRequest, error)
 }
 
@@ -61,6 +63,16 @@ func (c *publicUserServiceClient) Login(ctx context.Context, in *LoginRequest, o
 	return out, nil
 }
 
+func (c *publicUserServiceClient) Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LogoutResponse)
+	err := c.cc.Invoke(ctx, PublicUserService_Logout_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *publicUserServiceClient) Revalidate(ctx context.Context, in *RevalidateRequest, opts ...grpc.CallOption) (*RevalidateRequest, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RevalidateRequest)
@@ -77,6 +89,7 @@ func (c *publicUserServiceClient) Revalidate(ctx context.Context, in *Revalidate
 type PublicUserServiceServer interface {
 	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
+	Logout(context.Context, *LogoutRequest) (*LogoutResponse, error)
 	Revalidate(context.Context, *RevalidateRequest) (*RevalidateRequest, error)
 	mustEmbedUnimplementedPublicUserServiceServer()
 }
@@ -93,6 +106,9 @@ func (UnimplementedPublicUserServiceServer) Register(context.Context, *RegisterR
 }
 func (UnimplementedPublicUserServiceServer) Login(context.Context, *LoginRequest) (*LoginResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
+}
+func (UnimplementedPublicUserServiceServer) Logout(context.Context, *LogoutRequest) (*LogoutResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Logout not implemented")
 }
 func (UnimplementedPublicUserServiceServer) Revalidate(context.Context, *RevalidateRequest) (*RevalidateRequest, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Revalidate not implemented")
@@ -154,6 +170,24 @@ func _PublicUserService_Login_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PublicUserService_Logout_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LogoutRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PublicUserServiceServer).Logout(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PublicUserService_Logout_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PublicUserServiceServer).Logout(ctx, req.(*LogoutRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PublicUserService_Revalidate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(RevalidateRequest)
 	if err := dec(in); err != nil {
@@ -186,6 +220,10 @@ var PublicUserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Login",
 			Handler:    _PublicUserService_Login_Handler,
+		},
+		{
+			MethodName: "Logout",
+			Handler:    _PublicUserService_Logout_Handler,
 		},
 		{
 			MethodName: "Revalidate",
