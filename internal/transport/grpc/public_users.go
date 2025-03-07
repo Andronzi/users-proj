@@ -55,7 +55,23 @@ func (s *PublicUserServiceServer) Register(ctx context.Context, req *users_v1.Re
 		return nil, status.Error(codes.Internal, "Failed to create user")
 	}
 
-	return &users_v1.RegisterResponse{Message: "User created successfully"}, nil
+	claims := &Claims{
+		ID:   user.ID,
+		Role: user.Role,
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(time.Hour).Unix(),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString([]byte(s.SecretKey))
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to generate token")
+	}
+
+	return &users_v1.RegisterResponse{
+		Message: "User created successfully",
+		Token:   tokenString,
+	}, nil
 }
 
 func (s *PublicUserServiceServer) Login(ctx context.Context, req *users_v1.LoginRequest) (*users_v1.LoginResponse, error) {
