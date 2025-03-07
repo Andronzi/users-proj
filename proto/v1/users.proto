@@ -16,6 +16,18 @@ service InternalUserService {
     rpc AssignAdmin(AssignAdminRequest) returns (AssignAdminResponse) {};
     rpc CreateEmployee(CreateEmployeeRequest) returns (CreateEmployeeResponse) {};
     rpc BanUser(BanUserRequest) returns (BanUserResponse) {};
+    rpc Authorize(AuthorizeRequest) returns (AuthorizeResponse) {};
+}
+
+message AuthorizeRequest {
+    string token = 1;
+}
+
+message AuthorizeResponse {
+    bool is_valid = 1; 
+    string user_id = 2;
+    string role = 3;
+    string message = 4;
 }
 
 message LogoutRequest {}

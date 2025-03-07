@@ -239,6 +239,7 @@ const (
 	InternalUserService_AssignAdmin_FullMethodName    = "/users.v1.InternalUserService/AssignAdmin"
 	InternalUserService_CreateEmployee_FullMethodName = "/users.v1.InternalUserService/CreateEmployee"
 	InternalUserService_BanUser_FullMethodName        = "/users.v1.InternalUserService/BanUser"
+	InternalUserService_Authorize_FullMethodName      = "/users.v1.InternalUserService/Authorize"
 )
 
 // InternalUserServiceClient is the client API for InternalUserService service.
@@ -249,6 +250,7 @@ type InternalUserServiceClient interface {
 	AssignAdmin(ctx context.Context, in *AssignAdminRequest, opts ...grpc.CallOption) (*AssignAdminResponse, error)
 	CreateEmployee(ctx context.Context, in *CreateEmployeeRequest, opts ...grpc.CallOption) (*CreateEmployeeResponse, error)
 	BanUser(ctx context.Context, in *BanUserRequest, opts ...grpc.CallOption) (*BanUserResponse, error)
+	Authorize(ctx context.Context, in *AuthorizeRequest, opts ...grpc.CallOption) (*AuthorizeResponse, error)
 }
 
 type internalUserServiceClient struct {
@@ -299,6 +301,16 @@ func (c *internalUserServiceClient) BanUser(ctx context.Context, in *BanUserRequ
 	return out, nil
 }
 
+func (c *internalUserServiceClient) Authorize(ctx context.Context, in *AuthorizeRequest, opts ...grpc.CallOption) (*AuthorizeResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AuthorizeResponse)
+	err := c.cc.Invoke(ctx, InternalUserService_Authorize_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // InternalUserServiceServer is the server API for InternalUserService service.
 // All implementations must embed UnimplementedInternalUserServiceServer
 // for forward compatibility.
@@ -307,6 +319,7 @@ type InternalUserServiceServer interface {
 	AssignAdmin(context.Context, *AssignAdminRequest) (*AssignAdminResponse, error)
 	CreateEmployee(context.Context, *CreateEmployeeRequest) (*CreateEmployeeResponse, error)
 	BanUser(context.Context, *BanUserRequest) (*BanUserResponse, error)
+	Authorize(context.Context, *AuthorizeRequest) (*AuthorizeResponse, error)
 	mustEmbedUnimplementedInternalUserServiceServer()
 }
 
@@ -328,6 +341,9 @@ func (UnimplementedInternalUserServiceServer) CreateEmployee(context.Context, *C
 }
 func (UnimplementedInternalUserServiceServer) BanUser(context.Context, *BanUserRequest) (*BanUserResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BanUser not implemented")
+}
+func (UnimplementedInternalUserServiceServer) Authorize(context.Context, *AuthorizeRequest) (*AuthorizeResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Authorize not implemented")
 }
 func (UnimplementedInternalUserServiceServer) mustEmbedUnimplementedInternalUserServiceServer() {}
 func (UnimplementedInternalUserServiceServer) testEmbeddedByValue()                             {}
@@ -422,6 +438,24 @@ func _InternalUserService_BanUser_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _InternalUserService_Authorize_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AuthorizeRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InternalUserServiceServer).Authorize(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: InternalUserService_Authorize_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InternalUserServiceServer).Authorize(ctx, req.(*AuthorizeRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // InternalUserService_ServiceDesc is the grpc.ServiceDesc for InternalUserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -444,6 +478,10 @@ var InternalUserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BanUser",
 			Handler:    _InternalUserService_BanUser_Handler,
+		},
+		{
+			MethodName: "Authorize",
+			Handler:    _InternalUserService_Authorize_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
