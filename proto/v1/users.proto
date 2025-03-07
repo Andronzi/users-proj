@@ -7,6 +7,7 @@ option go_package = "pkg/grpc/users.v1";
 service PublicUserService {
     rpc Register(RegisterRequest) returns (RegisterResponse) {};
     rpc Login(LoginRequest) returns (LoginResponse) {};
+    rpc Revalidate(RevalidateRequest) returns (RevalidateRequest) {};
 }
 
 service InternalUserService {
@@ -14,6 +15,15 @@ service InternalUserService {
     rpc AssignAdmin(AssignAdminRequest) returns (AssignAdminResponse) {};
     rpc CreateEmployee(CreateEmployeeRequest) returns (CreateEmployeeResponse) {};
     rpc BanUser(BanUserRequest) returns (BanUserResponse) {};
+}
+
+message RevalidateRequest {
+    string token = 1;
+}
+
+message RevalidateResponse {
+    string token = 1;
+    string message = 2;
 }
 
 message RegisterRequest {

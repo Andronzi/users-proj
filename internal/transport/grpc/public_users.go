@@ -7,6 +7,7 @@ import (
 	"user_project/internal/repository"
 	users_v1 "user_project/pkg/grpc/users.v1"
 
+	"github.com/go-redis/redis/v8"
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
@@ -21,12 +22,14 @@ type Claims struct {
 type PublicUserServiceServer struct {
 	users_v1.UnimplementedPublicUserServiceServer
 	Repo      *repository.UserRepository
+	Redis     *redis.Client
 	SecretKey string
 }
 
-func NewPublicUserServiceServer(repo *repository.UserRepository, secretKey string) *PublicUserServiceServer {
+func NewPublicUserServiceServer(repo *repository.UserRepository, redis *redis.Client, secretKey string) *PublicUserServiceServer {
 	return &PublicUserServiceServer{
 		Repo:      repo,
+		Redis:     redis,
 		SecretKey: secretKey,
 	}
 }
@@ -100,5 +103,38 @@ func (s *PublicUserServiceServer) Login(ctx context.Context, req *users_v1.Login
 	return &users_v1.LoginResponse{
 		Token:   tokenString,
 		Message: "Login successful",
+	}, nil
+}
+
+func (s *PublicUserServiceServer) Revalidate(ctx context.Context, req *users_v1.RevalidateRequest) (*users_v1.RevalidateResponse, error) {
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(req.Token, claims, func(token *jwt.Token) (interface{}, error) {
+		return []byte(s.SecretKey), nil
+	}, jwt.WithoutClaimsValidation())
+	if err != nil || !token.Valid {
+		return nil, status.Error(codes.Unauthenticated, "Invalid token")
+	}
+
+	isTokenBlacklisted, _ := s.Redis.SIsMember(ctx, "token_blacklist", req.Token).Result()
+	if isTokenBlacklisted {
+		return nil, status.Error(codes.Unauthenticated, "Token is blacklisted")
+	}
+
+	newClaims := &Claims{
+		ID:   claims.ID,
+		Role: claims.Role,
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(time.Hour).Unix(),
+		},
+	}
+	newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, newClaims)
+	newTokenString, err := newToken.SignedString([]byte(s.SecretKey))
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to generate new token")
+	}
+
+	return &users_v1.RevalidateResponse{
+		Token:   newTokenString,
+		Message: "Token revalidated successfully",
 	}, nil
 }

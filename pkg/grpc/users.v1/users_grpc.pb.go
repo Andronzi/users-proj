@@ -19,8 +19,9 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PublicUserService_Register_FullMethodName = "/users.v1.PublicUserService/Register"
-	PublicUserService_Login_FullMethodName    = "/users.v1.PublicUserService/Login"
+	PublicUserService_Register_FullMethodName   = "/users.v1.PublicUserService/Register"
+	PublicUserService_Login_FullMethodName      = "/users.v1.PublicUserService/Login"
+	PublicUserService_Revalidate_FullMethodName = "/users.v1.PublicUserService/Revalidate"
 )
 
 // PublicUserServiceClient is the client API for PublicUserService service.
@@ -29,6 +30,7 @@ const (
 type PublicUserServiceClient interface {
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
+	Revalidate(ctx context.Context, in *RevalidateRequest, opts ...grpc.CallOption) (*RevalidateRequest, error)
 }
 
 type publicUserServiceClient struct {
@@ -59,12 +61,23 @@ func (c *publicUserServiceClient) Login(ctx context.Context, in *LoginRequest, o
 	return out, nil
 }
 
+func (c *publicUserServiceClient) Revalidate(ctx context.Context, in *RevalidateRequest, opts ...grpc.CallOption) (*RevalidateRequest, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RevalidateRequest)
+	err := c.cc.Invoke(ctx, PublicUserService_Revalidate_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PublicUserServiceServer is the server API for PublicUserService service.
 // All implementations must embed UnimplementedPublicUserServiceServer
 // for forward compatibility.
 type PublicUserServiceServer interface {
 	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
+	Revalidate(context.Context, *RevalidateRequest) (*RevalidateRequest, error)
 	mustEmbedUnimplementedPublicUserServiceServer()
 }
 
@@ -80,6 +93,9 @@ func (UnimplementedPublicUserServiceServer) Register(context.Context, *RegisterR
 }
 func (UnimplementedPublicUserServiceServer) Login(context.Context, *LoginRequest) (*LoginResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
+}
+func (UnimplementedPublicUserServiceServer) Revalidate(context.Context, *RevalidateRequest) (*RevalidateRequest, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Revalidate not implemented")
 }
 func (UnimplementedPublicUserServiceServer) mustEmbedUnimplementedPublicUserServiceServer() {}
 func (UnimplementedPublicUserServiceServer) testEmbeddedByValue()                           {}
@@ -138,6 +154,24 @@ func _PublicUserService_Login_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PublicUserService_Revalidate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RevalidateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PublicUserServiceServer).Revalidate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PublicUserService_Revalidate_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PublicUserServiceServer).Revalidate(ctx, req.(*RevalidateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PublicUserService_ServiceDesc is the grpc.ServiceDesc for PublicUserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -152,6 +186,10 @@ var PublicUserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Login",
 			Handler:    _PublicUserService_Login_Handler,
+		},
+		{
+			MethodName: "Revalidate",
+			Handler:    _PublicUserService_Revalidate_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
