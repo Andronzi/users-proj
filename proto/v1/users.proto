@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package users.v1;
 
-option go_package = "pkg/grpc/users/v1";
+option go_package = "pkg/grpc/users.v1";
 
 service PublicUserService {
     rpc Register(RegisterRequest) returns (RegisterResponse) {};
