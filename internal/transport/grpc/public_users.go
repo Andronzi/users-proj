@@ -2,7 +2,6 @@ package grpc
 
 import (
 	"context"
-	"strings"
 	"time"
 	"user_project/internal/domain"
 	"user_project/internal/repository"
@@ -13,7 +12,6 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -98,12 +96,9 @@ func (s *PublicUserServiceServer) Login(ctx context.Context, req *users_v1.Login
 }
 
 func (s *PublicUserServiceServer) Revalidate(ctx context.Context, req *users_v1.RevalidateRequest) (*users_v1.RevalidateResponse, error) {
-	claims := &Claims{}
-	token, err := jwt.ParseWithClaims(req.Token, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte(s.SecretKey), nil
-	}, jwt.WithoutClaimsValidation())
-	if err != nil || !token.Valid {
-		return nil, status.Error(codes.Unauthenticated, "Invalid token")
+	claims, err := utils.ParseAndValidateToken(req.Token, s.SecretKey, jwt.WithoutClaimsValidation())
+	if err != nil {
+		return nil, err
 	}
 
 	isTokenBlacklisted, _ := s.Redis.SIsMember(ctx, "token_blacklist", req.Token).Result()
@@ -131,33 +126,14 @@ func (s *PublicUserServiceServer) Revalidate(ctx context.Context, req *users_v1.
 }
 
 func (s *PublicUserServiceServer) Logout(ctx context.Context, req *users_v1.LogoutRequest) (*users_v1.LogoutResponse, error) {
-	headers, ok := metadata.FromIncomingContext(ctx)
-
-	if !ok {
-		return nil, status.Error(codes.Unauthenticated, "Headers are missing")
+	tokenString, err := utils.ExtractTokenFromContext(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	authHeaders := headers.Get("Authorization")
-	if len(authHeaders) == 0 {
-		return nil, status.Error(codes.Unauthenticated, "Authorization header is missing")
-	}
-
-	authHeader := authHeaders[0]
-	if !strings.HasPrefix(authHeader, "Bearer ") {
-		return nil, status.Error(codes.Unauthenticated, "Invalid authorization header format")
-	}
-
-	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-	if tokenString == "" {
-		return nil, status.Error(codes.Unauthenticated, "Token is missing")
-	}
-
-	claims := &Claims{}
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		return []byte(s.SecretKey), nil
-	})
-	if err != nil || !token.Valid {
-		return nil, status.Error(codes.Unauthenticated, "Invalid token")
+	claims, err := utils.ParseAndValidateToken(tokenString, s.SecretKey)
+	if err != nil {
+		return nil, err
 	}
 
 	ttl := time.Unix(claims.ExpiresAt, 0).Sub(time.Now())

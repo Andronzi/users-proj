@@ -6,17 +6,15 @@ import (
 	"log"
 	"net"
 	"os"
-	"strings"
 	"user_project/internal/domain"
 	"user_project/internal/repository"
 	grpcserver "user_project/internal/transport/grpc"
+	"user_project/internal/utils"
 	users_v1 "user_project/pkg/grpc/users.v1"
 
 	"github.com/go-redis/redis/v8"
-	"github.com/golang-jwt/jwt"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 	"gorm.io/driver/postgres"
@@ -25,33 +23,14 @@ import (
 
 func selectiveRoleRequired(secretKey string, redisClient *redis.Client, adminMethods map[string]bool) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		headers, ok := metadata.FromIncomingContext(ctx)
-
-		if !ok {
-			return nil, status.Error(codes.Unauthenticated, "Headers are missing")
+		tokenString, err := utils.ExtractTokenFromContext(ctx)
+		if err != nil {
+			return nil, err
 		}
 
-		authHeaders := headers.Get("Authorization")
-		if len(authHeaders) == 0 {
-			return nil, status.Error(codes.Unauthenticated, "Authorization header is missing")
-		}
-
-		authHeader := authHeaders[0]
-		if !strings.HasPrefix(authHeader, "Bearer ") {
-			return nil, status.Error(codes.Unauthenticated, "Invalid authorization header format")
-		}
-
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		if tokenString == "" {
-			return nil, status.Error(codes.Unauthenticated, "Token is missing")
-		}
-
-		claims := &grpcserver.Claims{}
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			return []byte(secretKey), nil
-		})
-		if err != nil || !token.Valid {
-			return nil, status.Error(codes.Unauthenticated, "Invalid token")
+		claims, err := utils.ParseAndValidateToken(tokenString, secretKey)
+		if err != nil {
+			return nil, err
 		}
 		isBanned, _ := redisClient.SIsMember(ctx, "blacklist", claims.ID).Result()
 		if isBanned {
