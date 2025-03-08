@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"strings"
 	"time"
 	"user_project/internal/domain"
 	"user_project/internal/repository"
@@ -142,10 +143,25 @@ func (s *PublicUserServiceServer) Revalidate(ctx context.Context, req *users_v1.
 
 func (s *InternalUserServiceServer) Logout(ctx context.Context, req *users_v1.LogoutRequest) (*users_v1.LogoutResponse, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok || len(md["authorization"]) == 0 {
+
+	if !ok {
+		return nil, status.Error(codes.Unauthenticated, "Metadata is missing")
+	}
+
+	authHeaders, ok := md["Authorization"]
+	if !ok || len(authHeaders) == 0 {
 		return nil, status.Error(codes.Unauthenticated, "Authorization header is missing")
 	}
-	tokenString := md["authorization"][0]
+
+	authHeader := authHeaders[0]
+	if !strings.HasPrefix(authHeader, "Bearer ") {
+		return nil, status.Error(codes.Unauthenticated, "Invalid authorization header format")
+	}
+
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+	if tokenString == "" {
+		return nil, status.Error(codes.Unauthenticated, "Token is missing")
+	}
 
 	claims := &Claims{}
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {

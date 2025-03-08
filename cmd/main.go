@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"strings"
 	"user_project/internal/domain"
 	"user_project/internal/repository"
 	grpcserver "user_project/internal/transport/grpc"
@@ -25,10 +26,26 @@ import (
 func selectiveRoleRequired(secretKey string, redisClient *redis.Client, adminMethods map[string]bool) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 		md, ok := metadata.FromIncomingContext(ctx)
-		if !ok || len(md["authorization"]) == 0 {
+
+		if !ok {
+			return nil, status.Error(codes.Unauthenticated, "Metadata is missing")
+		}
+
+		authHeaders, ok := md["Authorization"]
+		if !ok || len(authHeaders) == 0 {
 			return nil, status.Error(codes.Unauthenticated, "Authorization header is missing")
 		}
-		tokenString := md["authorization"][0]
+
+		authHeader := authHeaders[0]
+		if !strings.HasPrefix(authHeader, "Bearer ") {
+			return nil, status.Error(codes.Unauthenticated, "Invalid authorization header format")
+		}
+
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		if tokenString == "" {
+			return nil, status.Error(codes.Unauthenticated, "Token is missing")
+		}
+
 		claims := &grpcserver.Claims{}
 		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 			return []byte(secretKey), nil
