@@ -141,14 +141,14 @@ func (s *PublicUserServiceServer) Revalidate(ctx context.Context, req *users_v1.
 	}, nil
 }
 
-func (s *InternalUserServiceServer) Logout(ctx context.Context, req *users_v1.LogoutRequest) (*users_v1.LogoutResponse, error) {
+func (s *PublicUserServiceServer) Logout(ctx context.Context, req *users_v1.LogoutRequest) (*users_v1.LogoutResponse, error) {
 	md, ok := metadata.FromIncomingContext(ctx)
 
 	if !ok {
 		return nil, status.Error(codes.Unauthenticated, "Metadata is missing")
 	}
 
-	authHeaders, ok := md["Authorization"]
+	authHeaders, ok := md["uthorization"]
 	if !ok || len(authHeaders) == 0 {
 		return nil, status.Error(codes.Unauthenticated, "Authorization header is missing")
 	}

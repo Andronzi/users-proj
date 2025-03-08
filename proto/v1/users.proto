@@ -8,7 +8,7 @@ service PublicUserService {
     rpc Register(RegisterRequest) returns (RegisterResponse) {};
     rpc Login(LoginRequest) returns (LoginResponse) {};
     rpc Logout(LogoutRequest) returns (LogoutResponse) {};
-    rpc Revalidate(RevalidateRequest) returns (RevalidateRequest) {};
+    rpc Revalidate(RevalidateRequest) returns (RevalidateResponse) {};
 }
 
 service InternalUserService {

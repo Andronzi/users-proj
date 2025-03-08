@@ -32,7 +32,7 @@ type PublicUserServiceClient interface {
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
 	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
-	Revalidate(ctx context.Context, in *RevalidateRequest, opts ...grpc.CallOption) (*RevalidateRequest, error)
+	Revalidate(ctx context.Context, in *RevalidateRequest, opts ...grpc.CallOption) (*RevalidateResponse, error)
 }
 
 type publicUserServiceClient struct {
@@ -73,9 +73,9 @@ func (c *publicUserServiceClient) Logout(ctx context.Context, in *LogoutRequest,
 	return out, nil
 }
 
-func (c *publicUserServiceClient) Revalidate(ctx context.Context, in *RevalidateRequest, opts ...grpc.CallOption) (*RevalidateRequest, error) {
+func (c *publicUserServiceClient) Revalidate(ctx context.Context, in *RevalidateRequest, opts ...grpc.CallOption) (*RevalidateResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(RevalidateRequest)
+	out := new(RevalidateResponse)
 	err := c.cc.Invoke(ctx, PublicUserService_Revalidate_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -90,7 +90,7 @@ type PublicUserServiceServer interface {
 	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
 	Logout(context.Context, *LogoutRequest) (*LogoutResponse, error)
-	Revalidate(context.Context, *RevalidateRequest) (*RevalidateRequest, error)
+	Revalidate(context.Context, *RevalidateRequest) (*RevalidateResponse, error)
 	mustEmbedUnimplementedPublicUserServiceServer()
 }
 
@@ -110,7 +110,7 @@ func (UnimplementedPublicUserServiceServer) Login(context.Context, *LoginRequest
 func (UnimplementedPublicUserServiceServer) Logout(context.Context, *LogoutRequest) (*LogoutResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Logout not implemented")
 }
-func (UnimplementedPublicUserServiceServer) Revalidate(context.Context, *RevalidateRequest) (*RevalidateRequest, error) {
+func (UnimplementedPublicUserServiceServer) Revalidate(context.Context, *RevalidateRequest) (*RevalidateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Revalidate not implemented")
 }
 func (UnimplementedPublicUserServiceServer) mustEmbedUnimplementedPublicUserServiceServer() {}

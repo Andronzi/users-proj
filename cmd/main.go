@@ -102,7 +102,7 @@ func main() {
 	publicLis, _ := net.Listen("tcp", ":50054")
 	publicSrv := grpc.NewServer()
 	reflection.Register(publicSrv)
-	users_v1.RegisterPublicUserServiceServer(publicSrv, grpcserver.NewPublicUserServiceServer(userRepo, secretKey))
+	users_v1.RegisterPublicUserServiceServer(publicSrv, grpcserver.NewPublicUserServiceServer(userRepo, redisClient, secretKey))
 	go func() {
 		log.Printf("Public server listening at %v", publicLis.Addr())
 		if err := publicSrv.Serve(publicLis); err != nil {
