@@ -89,6 +89,11 @@ func (s *PublicUserServiceServer) Login(ctx context.Context, req *users_v1.Login
 		return nil, status.Error(codes.Unauthenticated, "Invalid password")
 	}
 
+	isBanned, _ := s.Redis.SIsMember(ctx, "blacklist", user.ID).Result()
+	if isBanned {
+		return nil, status.Error(codes.PermissionDenied, "User is banned")
+	}
+
 	claims := &Claims{
 		ID:   user.ID,
 		Role: string(user.Role),

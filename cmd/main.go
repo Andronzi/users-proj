@@ -62,7 +62,7 @@ func selectiveRoleRequired(secretKey string, redisClient *redis.Client, adminMet
 
 		if adminMethods[info.FullMethod] {
 			role, ok := ctx.Value("role").(string)
-			if !ok || role != "admin" {
+			if !ok || role != string(domain.ADMIN) {
 				return nil, status.Error(codes.PermissionDenied, "Forbidden: admin role required")
 			}
 		}

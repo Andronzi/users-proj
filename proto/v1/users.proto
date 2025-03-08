@@ -23,7 +23,25 @@ service InternalUserService {
     rpc CreateEmployee(CreateEmployeeRequest) returns (CreateEmployeeResponse) {};
     rpc BanUser(BanUserRequest) returns (BanUserResponse) {};
     rpc Authorize(AuthorizeRequest) returns (AuthorizeResponse) {};
+    rpc ListUsers(ListUsersRequest) returns (ListUsersResponse) {};
 }
+
+message ListUsersRequest {
+    int32 page = 1;
+    int32 page_size = 2;
+    string email_filter = 3;
+}
+
+message ListUsersResponse {
+    repeated User users = 1;
+    int32 total = 2;
+}
+
+message User {
+    string id = 1;
+    string email = 2;
+    Role role = 3;
+} 
 
 message AuthorizeRequest {
     string token = 1;

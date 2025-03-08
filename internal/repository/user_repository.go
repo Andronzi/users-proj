@@ -46,3 +46,24 @@ func (r *UserRepository) ExistsByEmail(ctx context.Context, email string) (bool,
 		Count(&count).Error
 	return count > 0, err
 }
+
+func (r *UserRepository) ListUsers(ctx context.Context, page, pageSize int, emailFilter string) ([]*domain.User, int, error) {
+	var users []*domain.User
+	query := r.db.Model(&domain.User{})
+
+	if emailFilter != "" {
+		query = query.Where("email LIKE ?", "%"+emailFilter+"%")
+	}
+
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	offset := (page - 1) * pageSize
+	if err := query.Offset(offset).Limit(pageSize).Find(&users).Error; err != nil {
+		return nil, 0, err
+	}
+
+	return users, int(total), nil
+}

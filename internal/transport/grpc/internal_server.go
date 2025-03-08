@@ -101,3 +101,29 @@ func (s *InternalUserServiceServer) BanUser(ctx context.Context, req *users_v1.B
 
 	return &users_v1.BanUserResponse{Message: "User banned successfully"}, nil
 }
+
+func (s *InternalUserServiceServer) ListUsers(ctx context.Context, req *users_v1.ListUsersRequest) (*users_v1.ListUsersResponse, error) {
+	role, ok := ctx.Value("role").(string)
+	if !ok || (role != string(domain.EMPLOYEE) && role != string(domain.ADMIN)) {
+		return nil, status.Error(codes.PermissionDenied, "Доступ разрешен только сотрудникам и администраторам")
+	}
+
+	users, total, err := s.Repo.ListUsers(ctx, int(req.Page), int(req.PageSize), req.EmailFilter)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Ошибка при получении списка пользователей")
+	}
+
+	pbUsers := make([]*users_v1.User, len(users))
+	for i, user := range users {
+		pbUsers[i] = &users_v1.User{
+			Id:    user.ID,
+			Email: user.Email,
+			Role:  utils.DomainToGrpcRole(user.Role),
+		}
+	}
+
+	return &users_v1.ListUsersResponse{
+		Users: pbUsers,
+		Total: int32(total),
+	}, nil
+}
