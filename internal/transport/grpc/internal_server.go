@@ -41,7 +41,7 @@ func (s *InternalUserServiceServer) GetProfile(ctx context.Context, req *users_v
 	return &users_v1.GetProfileResponse{
 		Id:    user.ID,
 		Email: user.Email,
-		Role:  user.Role,
+		Role:  users_v1.Role(user.Role),
 	}, nil
 }
 
@@ -51,7 +51,7 @@ func (s *InternalUserServiceServer) AssignAdmin(ctx context.Context, req *users_
 		return nil, status.Error(codes.NotFound, "User not found")
 	}
 
-	user.Role = "admin"
+	user.Role = domain.Role(users_v1.Role_ADMIN)
 	if err := s.Repo.Update(ctx, user); err != nil {
 		return nil, status.Error(codes.Internal, "Failed to update user")
 	}
@@ -76,7 +76,7 @@ func (s *InternalUserServiceServer) CreateEmployee(ctx context.Context, req *use
 	user := &domain.User{
 		Email:    req.Email,
 		Password: string(hashedPassword),
-		Role:     "employee",
+		Role:     domain.Role(users_v1.Role_ADMIN),
 	}
 	if err := s.Repo.Create(ctx, user); err != nil {
 		return nil, status.Error(codes.Internal, "Failed to create employee")
