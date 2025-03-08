@@ -37,12 +37,12 @@ func NewPublicUserServiceServer(repo *repository.UserRepository, redis *redis.Cl
 }
 
 func (s *PublicUserServiceServer) Register(ctx context.Context, req *users_v1.RegisterRequest) (*users_v1.RegisterResponse, error) {
-	exists, err := s.Repo.ExistsByUsernameOrEmail(ctx, req.Username, req.Email)
+	exists, err := s.Repo.ExistsByEmail(ctx, req.Email)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Failed to check user existence")
 	}
 	if exists {
-		return nil, status.Error(codes.AlreadyExists, "Username or email already exists")
+		return nil, status.Error(codes.AlreadyExists, "Email already exists")
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
@@ -51,7 +51,6 @@ func (s *PublicUserServiceServer) Register(ctx context.Context, req *users_v1.Re
 	}
 
 	user := &domain.User{
-		Username: req.Username,
 		Email:    req.Email,
 		Password: string(hashedPassword),
 		Role:     "user",

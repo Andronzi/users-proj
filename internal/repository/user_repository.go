@@ -39,10 +39,10 @@ func (r *UserRepository) Update(ctx context.Context, user *domain.User) error {
 	return r.db.WithContext(ctx).Save(user).Error
 }
 
-func (r *UserRepository) ExistsByUsernameOrEmail(ctx context.Context, username, email string) (bool, error) {
+func (r *UserRepository) ExistsByEmail(ctx context.Context, email string) (bool, error) {
 	var count int64
 	err := r.db.WithContext(ctx).Model(&domain.User{}).
-		Where("username = ? OR email = ?", username, email).
+		Where("email = ?", email).
 		Count(&count).Error
 	return count > 0, err
 }

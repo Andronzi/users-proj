@@ -39,10 +39,9 @@ func (s *InternalUserServiceServer) GetProfile(ctx context.Context, req *users_v
 	}
 
 	return &users_v1.GetProfileResponse{
-		Id:       user.ID,
-		Username: user.Username,
-		Email:    user.Email,
-		Role:     user.Role,
+		Id:    user.ID,
+		Email: user.Email,
+		Role:  user.Role,
 	}, nil
 }
 
@@ -61,12 +60,12 @@ func (s *InternalUserServiceServer) AssignAdmin(ctx context.Context, req *users_
 }
 
 func (s *InternalUserServiceServer) CreateEmployee(ctx context.Context, req *users_v1.CreateEmployeeRequest) (*users_v1.CreateEmployeeResponse, error) {
-	exists, err := s.Repo.ExistsByUsernameOrEmail(ctx, req.Username, req.Email)
+	exists, err := s.Repo.ExistsByEmail(ctx, req.Email)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Failed to check user existence")
 	}
 	if exists {
-		return nil, status.Error(codes.AlreadyExists, "Username or email already exists")
+		return nil, status.Error(codes.AlreadyExists, "Email already exists")
 	}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
@@ -75,7 +74,6 @@ func (s *InternalUserServiceServer) CreateEmployee(ctx context.Context, req *use
 	}
 
 	user := &domain.User{
-		Username: req.Username,
 		Email:    req.Email,
 		Password: string(hashedPassword),
 		Role:     "employee",
