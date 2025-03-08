@@ -25,14 +25,14 @@ import (
 
 func selectiveRoleRequired(secretKey string, redisClient *redis.Client, adminMethods map[string]bool) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		md, ok := metadata.FromIncomingContext(ctx)
+		headers, ok := metadata.FromIncomingContext(ctx)
 
 		if !ok {
-			return nil, status.Error(codes.Unauthenticated, "Metadata is missing")
+			return nil, status.Error(codes.Unauthenticated, "Headers are missing")
 		}
 
-		authHeaders, ok := md["Authorization"]
-		if !ok || len(authHeaders) == 0 {
+		authHeaders := headers.Get("Authorization")
+		if len(authHeaders) == 0 {
 			return nil, status.Error(codes.Unauthenticated, "Authorization header is missing")
 		}
 

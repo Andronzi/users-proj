@@ -2,12 +2,12 @@ package domain
 
 import "time"
 
-type Role int32
+type Role string
 
 const (
-	USER     Role = 0
-	EMPLOYEE Role = 1
-	ADMIN    Role = 2
+	USER     Role = "USER"
+	EMPLOYEE Role = "EMPLOYEE"
+	ADMIN    Role = "ADMIN"
 )
 
 type User struct {

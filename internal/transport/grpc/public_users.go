@@ -6,6 +6,7 @@ import (
 	"time"
 	"user_project/internal/domain"
 	"user_project/internal/repository"
+	"user_project/internal/utils"
 	users_v1 "user_project/pkg/grpc/users.v1"
 
 	"github.com/go-redis/redis/v8"
@@ -53,7 +54,7 @@ func (s *PublicUserServiceServer) Register(ctx context.Context, req *users_v1.Re
 	user := &domain.User{
 		Email:    req.Email,
 		Password: string(hashedPassword),
-		Role:     "user",
+		Role:     utils.GrpcToDomainRole(req.Role),
 	}
 	if err := s.Repo.Create(ctx, user); err != nil {
 		return nil, status.Error(codes.Internal, "Failed to create user")
@@ -61,7 +62,7 @@ func (s *PublicUserServiceServer) Register(ctx context.Context, req *users_v1.Re
 
 	claims := &Claims{
 		ID:   user.ID,
-		Role: user.Role,
+		Role: string(user.Role),
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour).Unix(),
 		},
@@ -90,7 +91,7 @@ func (s *PublicUserServiceServer) Login(ctx context.Context, req *users_v1.Login
 
 	claims := &Claims{
 		ID:   user.ID,
-		Role: user.Role,
+		Role: string(user.Role),
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour).Unix(),
 		},
@@ -141,14 +142,14 @@ func (s *PublicUserServiceServer) Revalidate(ctx context.Context, req *users_v1.
 }
 
 func (s *PublicUserServiceServer) Logout(ctx context.Context, req *users_v1.LogoutRequest) (*users_v1.LogoutResponse, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
+	headers, ok := metadata.FromIncomingContext(ctx)
 
 	if !ok {
-		return nil, status.Error(codes.Unauthenticated, "Metadata is missing")
+		return nil, status.Error(codes.Unauthenticated, "Headers are missing")
 	}
 
-	authHeaders, ok := md["uthorization"]
-	if !ok || len(authHeaders) == 0 {
+	authHeaders := headers.Get("Authorization")
+	if len(authHeaders) == 0 {
 		return nil, status.Error(codes.Unauthenticated, "Authorization header is missing")
 	}
 
