@@ -60,22 +60,14 @@ func (s *PublicUserServiceServer) Register(ctx context.Context, req *users_v1.Re
 		return nil, status.Error(codes.Internal, "Failed to create user")
 	}
 
-	claims := &Claims{
-		ID:   user.ID,
-		Role: string(user.Role),
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Hour).Unix(),
-		},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte(s.SecretKey))
+	token, err := utils.GenerateToken(user, s.SecretKey)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Failed to generate token")
 	}
 
 	return &users_v1.RegisterResponse{
 		Message: "User created successfully",
-		Token:   tokenString,
+		Token:   token,
 	}, nil
 }
 
@@ -94,21 +86,13 @@ func (s *PublicUserServiceServer) Login(ctx context.Context, req *users_v1.Login
 		return nil, status.Error(codes.PermissionDenied, "User is banned")
 	}
 
-	claims := &Claims{
-		ID:   user.ID,
-		Role: string(user.Role),
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Hour).Unix(),
-		},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	tokenString, err := token.SignedString([]byte(s.SecretKey))
+	token, err := utils.GenerateToken(user, s.SecretKey)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Failed to generate token")
 	}
 
 	return &users_v1.LoginResponse{
-		Token:   tokenString,
+		Token:   token,
 		Message: "Login successful",
 	}, nil
 }
