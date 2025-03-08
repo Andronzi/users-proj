@@ -237,6 +237,7 @@ var PublicUserService_ServiceDesc = grpc.ServiceDesc{
 const (
 	InternalUserService_GetProfile_FullMethodName     = "/users.v1.InternalUserService/GetProfile"
 	InternalUserService_AssignAdmin_FullMethodName    = "/users.v1.InternalUserService/AssignAdmin"
+	InternalUserService_CreateUser_FullMethodName     = "/users.v1.InternalUserService/CreateUser"
 	InternalUserService_CreateEmployee_FullMethodName = "/users.v1.InternalUserService/CreateEmployee"
 	InternalUserService_BanUser_FullMethodName        = "/users.v1.InternalUserService/BanUser"
 	InternalUserService_Authorize_FullMethodName      = "/users.v1.InternalUserService/Authorize"
@@ -249,6 +250,7 @@ const (
 type InternalUserServiceClient interface {
 	GetProfile(ctx context.Context, in *GetProfileRequest, opts ...grpc.CallOption) (*GetProfileResponse, error)
 	AssignAdmin(ctx context.Context, in *AssignAdminRequest, opts ...grpc.CallOption) (*AssignAdminResponse, error)
+	CreateUser(ctx context.Context, in *CreateUserRequest, opts ...grpc.CallOption) (*CreateUserResponse, error)
 	CreateEmployee(ctx context.Context, in *CreateEmployeeRequest, opts ...grpc.CallOption) (*CreateEmployeeResponse, error)
 	BanUser(ctx context.Context, in *BanUserRequest, opts ...grpc.CallOption) (*BanUserResponse, error)
 	Authorize(ctx context.Context, in *AuthorizeRequest, opts ...grpc.CallOption) (*AuthorizeResponse, error)
@@ -277,6 +279,16 @@ func (c *internalUserServiceClient) AssignAdmin(ctx context.Context, in *AssignA
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AssignAdminResponse)
 	err := c.cc.Invoke(ctx, InternalUserService_AssignAdmin_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *internalUserServiceClient) CreateUser(ctx context.Context, in *CreateUserRequest, opts ...grpc.CallOption) (*CreateUserResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateUserResponse)
+	err := c.cc.Invoke(ctx, InternalUserService_CreateUser_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -329,6 +341,7 @@ func (c *internalUserServiceClient) ListUsers(ctx context.Context, in *ListUsers
 type InternalUserServiceServer interface {
 	GetProfile(context.Context, *GetProfileRequest) (*GetProfileResponse, error)
 	AssignAdmin(context.Context, *AssignAdminRequest) (*AssignAdminResponse, error)
+	CreateUser(context.Context, *CreateUserRequest) (*CreateUserResponse, error)
 	CreateEmployee(context.Context, *CreateEmployeeRequest) (*CreateEmployeeResponse, error)
 	BanUser(context.Context, *BanUserRequest) (*BanUserResponse, error)
 	Authorize(context.Context, *AuthorizeRequest) (*AuthorizeResponse, error)
@@ -348,6 +361,9 @@ func (UnimplementedInternalUserServiceServer) GetProfile(context.Context, *GetPr
 }
 func (UnimplementedInternalUserServiceServer) AssignAdmin(context.Context, *AssignAdminRequest) (*AssignAdminResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AssignAdmin not implemented")
+}
+func (UnimplementedInternalUserServiceServer) CreateUser(context.Context, *CreateUserRequest) (*CreateUserResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateUser not implemented")
 }
 func (UnimplementedInternalUserServiceServer) CreateEmployee(context.Context, *CreateEmployeeRequest) (*CreateEmployeeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateEmployee not implemented")
@@ -414,6 +430,24 @@ func _InternalUserService_AssignAdmin_Handler(srv interface{}, ctx context.Conte
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(InternalUserServiceServer).AssignAdmin(ctx, req.(*AssignAdminRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _InternalUserService_CreateUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InternalUserServiceServer).CreateUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: InternalUserService_CreateUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InternalUserServiceServer).CreateUser(ctx, req.(*CreateUserRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -504,6 +538,10 @@ var InternalUserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AssignAdmin",
 			Handler:    _InternalUserService_AssignAdmin_Handler,
+		},
+		{
+			MethodName: "CreateUser",
+			Handler:    _InternalUserService_CreateUser_Handler,
 		},
 		{
 			MethodName: "CreateEmployee",

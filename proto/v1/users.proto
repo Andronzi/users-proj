@@ -20,6 +20,7 @@ service PublicUserService {
 service InternalUserService {
     rpc GetProfile(GetProfileRequest) returns (GetProfileResponse) {};
     rpc AssignAdmin(AssignAdminRequest) returns (AssignAdminResponse) {};
+    rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {};
     rpc CreateEmployee(CreateEmployeeRequest) returns (CreateEmployeeResponse) {};
     rpc BanUser(BanUserRequest) returns (BanUserResponse) {};
     rpc Authorize(AuthorizeRequest) returns (AuthorizeResponse) {};
@@ -103,10 +104,19 @@ message AssignAdminResponse {
     string message = 1;
 }
 
+message CreateUserRequest {
+    string email = 1;
+    string password = 2;
+}
+
+message CreateUserResponse {
+    string message = 1;
+    string user_id = 2;
+}
+
 message CreateEmployeeRequest {
-    string username = 1;
-    string email = 2;
-    string password = 3;
+    string email = 1;
+    string password = 2;
 }
 
 message CreateEmployeeResponse {

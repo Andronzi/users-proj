@@ -93,6 +93,35 @@ func (s *InternalUserServiceServer) CreateEmployee(ctx context.Context, req *use
 	}, nil
 }
 
+func (s *InternalUserServiceServer) CreateUser(ctx context.Context, req *users_v1.CreateUserRequest) (*users_v1.CreateUserResponse, error) {
+	exists, err := s.Repo.ExistsByEmail(ctx, req.Email)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to check user existence")
+	}
+	if exists {
+		return nil, status.Error(codes.AlreadyExists, "Email already exists")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to hash password")
+	}
+
+	user := &domain.User{
+		Email:    req.Email,
+		Password: string(hashedPassword),
+		Role:     utils.GrpcToDomainRole(users_v1.Role_USER),
+	}
+	if err := s.Repo.Create(ctx, user); err != nil {
+		return nil, status.Error(codes.Internal, "Failed to create user")
+	}
+
+	return &users_v1.CreateUserResponse{
+		Message: "User created successfully",
+		UserId:  user.ID,
+	}, nil
+}
+
 func (s *InternalUserServiceServer) BanUser(ctx context.Context, req *users_v1.BanUserRequest) (*users_v1.BanUserResponse, error) {
 	user, err := s.Repo.FindByID(ctx, req.UserId)
 	if err != nil {
