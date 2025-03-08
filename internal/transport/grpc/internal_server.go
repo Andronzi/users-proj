@@ -77,7 +77,7 @@ func (s *InternalUserServiceServer) CreateEmployee(ctx context.Context, req *use
 	user := &domain.User{
 		Email:    req.Email,
 		Password: string(hashedPassword),
-		Role:     utils.GrpcToDomainRole(users_v1.Role_ADMIN),
+		Role:     utils.GrpcToDomainRole(users_v1.Role_EMPLOYEE),
 	}
 	if err := s.Repo.Create(ctx, user); err != nil {
 		return nil, status.Error(codes.Internal, "Failed to create employee")
