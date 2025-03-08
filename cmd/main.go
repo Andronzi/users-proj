@@ -63,6 +63,7 @@ func main() {
 	roleSafeMethods := map[string]bool{
 		"/users.v1.InternalUserService/ListUsers":      true,
 		"/users.v1.InternalUserService/AssignAdmin":    true,
+		"/users.v1.InternalUserService/CreateUser":     true,
 		"/users.v1.InternalUserService/CreateEmployee": true,
 		"/users.v1.InternalUserService/BanUser":        true,
 	}
