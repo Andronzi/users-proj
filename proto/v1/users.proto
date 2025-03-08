@@ -43,9 +43,7 @@ message User {
     Role role = 3;
 } 
 
-message AuthorizeRequest {
-    string token = 1;
-}
+message AuthorizeRequest {}
 
 message AuthorizeResponse {
     bool is_valid = 1; 
@@ -60,9 +58,7 @@ message LogoutResponse {
     string message = 1;
 }
 
-message RevalidateRequest {
-    string token = 1;
-}
+message RevalidateRequest {}
 
 message RevalidateResponse {
     string token = 1;

@@ -96,12 +96,17 @@ func (s *PublicUserServiceServer) Login(ctx context.Context, req *users_v1.Login
 }
 
 func (s *PublicUserServiceServer) Revalidate(ctx context.Context, req *users_v1.RevalidateRequest) (*users_v1.RevalidateResponse, error) {
-	claims, err := utils.ParseAndValidateToken(req.Token, s.SecretKey, jwt.WithoutClaimsValidation())
+	tokenString, err := utils.ExtractTokenFromContext(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	isTokenBlacklisted, _ := s.Redis.SIsMember(ctx, "token_blacklist", req.Token).Result()
+	claims, err := utils.ParseAndValidateToken(tokenString, s.SecretKey, jwt.WithoutClaimsValidation())
+	if err != nil {
+		return nil, err
+	}
+
+	isTokenBlacklisted, _ := s.Redis.SIsMember(ctx, "token_blacklist", tokenString).Result()
 	if isTokenBlacklisted {
 		return nil, status.Error(codes.Unauthenticated, "Token is blacklisted")
 	}

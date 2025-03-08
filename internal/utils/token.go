@@ -40,7 +40,7 @@ func ParseAndValidateToken(tokenString string, secretKey string, options ...jwt.
 		return nil, status.Error(codes.Unauthenticated, "Token have errors")
 	}
 
-	if err != nil || !token.Valid {
+	if !token.Valid {
 		return nil, status.Error(codes.Unauthenticated, "Invalid token")
 	}
 

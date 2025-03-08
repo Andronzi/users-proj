@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"time"
 	"user_project/internal/domain"
 	"user_project/internal/repository"
 	"user_project/internal/utils"
@@ -100,6 +101,41 @@ func (s *InternalUserServiceServer) BanUser(ctx context.Context, req *users_v1.B
 	}
 
 	return &users_v1.BanUserResponse{Message: "User banned successfully"}, nil
+}
+
+func (s *InternalUserServiceServer) Authorize(ctx context.Context, req *users_v1.AuthorizeRequest) (*users_v1.AuthorizeResponse, error) {
+	tokenString, err := utils.ExtractTokenFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	claims, err := utils.ParseAndValidateToken(tokenString, s.SecretKey)
+	if err != nil {
+		return nil, err
+	}
+
+	ttl := time.Unix(claims.ExpiresAt, 0).Sub(time.Now())
+	if ttl <= 0 {
+		return &users_v1.AuthorizeResponse{
+			IsValid: false,
+			Message: "Token already expired",
+		}, nil
+	}
+
+	isBanned, _ := s.Redis.SIsMember(ctx, "blacklist", claims.ID).Result()
+	if isBanned {
+		return &users_v1.AuthorizeResponse{
+			IsValid: false,
+			Message: "Token is in blacklist",
+		}, nil
+	}
+
+	return &users_v1.AuthorizeResponse{
+		IsValid: true,
+		UserId:  claims.ID,
+		Role:    users_v1.Role(users_v1.Role_value[claims.Role]),
+		Message: "Successful authorized",
+	}, nil
 }
 
 func (s *InternalUserServiceServer) ListUsers(ctx context.Context, req *users_v1.ListUsersRequest) (*users_v1.ListUsersResponse, error) {
