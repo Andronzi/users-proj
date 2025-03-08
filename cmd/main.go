@@ -9,45 +9,16 @@ import (
 	"user_project/internal/domain"
 	"user_project/internal/repository"
 	grpcserver "user_project/internal/transport/grpc"
-	"user_project/internal/utils"
+	"user_project/internal/utils/blacklist"
+	"user_project/internal/utils/middleware"
 	users_v1 "user_project/pkg/grpc/users.v1"
 
 	"github.com/go-redis/redis/v8"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
-	"google.golang.org/grpc/status"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
-
-func selectiveRoleRequired(secretKey string, redisClient *redis.Client, adminMethods map[string]bool) grpc.UnaryServerInterceptor {
-	return func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		tokenString, err := utils.ExtractTokenFromContext(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		claims, err := utils.ParseAndValidateToken(tokenString, secretKey)
-		if err != nil {
-			return nil, err
-		}
-		isBanned, _ := redisClient.SIsMember(ctx, "blacklist", claims.ID).Result()
-		if isBanned {
-			return nil, status.Error(codes.PermissionDenied, "User is banned")
-		}
-		ctx = context.WithValue(ctx, "userID", claims.ID)
-		ctx = context.WithValue(ctx, "role", claims.Role)
-
-		if adminMethods[info.FullMethod] {
-			role, ok := ctx.Value("role").(string)
-			if !ok || role == string(domain.USER) {
-				return nil, status.Error(codes.PermissionDenied, "Forbidden: admin or employee role required")
-			}
-		}
-		return handler(ctx, req)
-	}
-}
 
 func main() {
 	dbHost := os.Getenv("DB_HOST")
@@ -89,17 +60,24 @@ func main() {
 		}
 	}()
 
-	adminMethods := map[string]bool{
+	roleSafeMethods := map[string]bool{
 		"/users.v1.InternalUserService/AssignAdmin":    true,
 		"/users.v1.InternalUserService/CreateEmployee": true,
 		"/users.v1.InternalUserService/BanUser":        true,
 	}
 	internalLis, _ := net.Listen("tcp", ":50055")
+	blacklist := blacklist.NewRedisBlacklist(redisClient, blacklist.UserBlackList, blacklist.TokenBlackList)
 	internalSrv := grpc.NewServer(
-		grpc.UnaryInterceptor(selectiveRoleRequired(secretKey, redisClient, adminMethods)),
+		grpc.ChainUnaryInterceptor(
+			middleware.BlacklistMiddleware(secretKey, blacklist),
+			middleware.RoleRequiredMiddleware(roleSafeMethods),
+		),
 	)
 	reflection.Register(internalSrv)
-	users_v1.RegisterInternalUserServiceServer(internalSrv, grpcserver.NewInternalUserServiceServer(userRepo, redisClient, secretKey))
+	users_v1.RegisterInternalUserServiceServer(
+		internalSrv,
+		grpcserver.NewInternalUserServiceServer(userRepo, redisClient, blacklist, secretKey),
+	)
 	log.Printf("Internal server listening at %v", internalLis.Addr())
 	if err := internalSrv.Serve(internalLis); err != nil {
 		log.Fatalf("Failed to serve internal: %v", err)

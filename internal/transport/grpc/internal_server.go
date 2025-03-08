@@ -6,6 +6,7 @@ import (
 	"user_project/internal/domain"
 	"user_project/internal/repository"
 	"user_project/internal/utils"
+	"user_project/internal/utils/blacklist"
 	users_v1 "user_project/pkg/grpc/users.v1"
 
 	"github.com/go-redis/redis/v8"
@@ -16,16 +17,18 @@ import (
 
 type InternalUserServiceServer struct {
 	users_v1.UnimplementedInternalUserServiceServer
-	Repo      *repository.UserRepository
-	Redis     *redis.Client
-	SecretKey string
+	Repo           *repository.UserRepository
+	Redis          *redis.Client
+	RedisBlacklist *blacklist.RedisBlacklist
+	SecretKey      string
 }
 
-func NewInternalUserServiceServer(repo *repository.UserRepository, redis *redis.Client, secretKey string) *InternalUserServiceServer {
+func NewInternalUserServiceServer(repo *repository.UserRepository, redis *redis.Client, redisBlacklist *blacklist.RedisBlacklist, secretKey string) *InternalUserServiceServer {
 	return &InternalUserServiceServer{
-		Repo:      repo,
-		Redis:     redis,
-		SecretKey: secretKey,
+		Repo:           repo,
+		Redis:          redis,
+		RedisBlacklist: redisBlacklist,
+		SecretKey:      secretKey,
 	}
 }
 
@@ -96,8 +99,8 @@ func (s *InternalUserServiceServer) BanUser(ctx context.Context, req *users_v1.B
 		return nil, status.Error(codes.NotFound, "User not found")
 	}
 
-	if err := s.Redis.SAdd(ctx, "blacklist", user.ID).Err(); err != nil {
-		return nil, status.Error(codes.Internal, "Failed to ban user")
+	if err := s.RedisBlacklist.BanUser(ctx, user.ID, time.Hour); err != nil {
+		return nil, err
 	}
 
 	return &users_v1.BanUserResponse{Message: "User banned successfully"}, nil
@@ -114,22 +117,6 @@ func (s *InternalUserServiceServer) Authorize(ctx context.Context, req *users_v1
 		return nil, err
 	}
 
-	ttl := time.Unix(claims.ExpiresAt, 0).Sub(time.Now())
-	if ttl <= 0 {
-		return &users_v1.AuthorizeResponse{
-			IsValid: false,
-			Message: "Token already expired",
-		}, nil
-	}
-
-	isBanned, _ := s.Redis.SIsMember(ctx, "blacklist", claims.ID).Result()
-	if isBanned {
-		return &users_v1.AuthorizeResponse{
-			IsValid: false,
-			Message: "Token is in blacklist",
-		}, nil
-	}
-
 	return &users_v1.AuthorizeResponse{
 		IsValid: true,
 		UserId:  claims.ID,
@@ -139,14 +126,9 @@ func (s *InternalUserServiceServer) Authorize(ctx context.Context, req *users_v1
 }
 
 func (s *InternalUserServiceServer) ListUsers(ctx context.Context, req *users_v1.ListUsersRequest) (*users_v1.ListUsersResponse, error) {
-	role, ok := ctx.Value("role").(string)
-	if !ok || (role != string(domain.EMPLOYEE) && role != string(domain.ADMIN)) {
-		return nil, status.Error(codes.PermissionDenied, "Доступ разрешен только сотрудникам и администраторам")
-	}
-
 	users, total, err := s.Repo.ListUsers(ctx, int(req.Page), int(req.PageSize), req.EmailFilter)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "Ошибка при получении списка пользователей")
+		return nil, status.Error(codes.Internal, "Failed to get users")
 	}
 
 	pbUsers := make([]*users_v1.User, len(users))

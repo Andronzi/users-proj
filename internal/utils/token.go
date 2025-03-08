@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 	"time"
-	"user_project/internal/domain"
 
 	"github.com/golang-jwt/jwt/v4"
 	"google.golang.org/grpc/codes"
@@ -18,10 +17,15 @@ type Claims struct {
 	jwt.StandardClaims
 }
 
-func GenerateToken(user *domain.User, secretKey string) (string, error) {
+type TokenParams struct {
+	ID   string
+	Role string
+}
+
+func GenerateToken(tokenParams TokenParams, secretKey string) (string, error) {
 	claims := &Claims{
-		ID:   user.ID,
-		Role: string(user.Role),
+		ID:   tokenParams.ID,
+		Role: string(tokenParams.Role),
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour).Unix(),
 		},

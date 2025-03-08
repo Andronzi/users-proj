@@ -2,10 +2,10 @@ package grpc
 
 import (
 	"context"
-	"time"
 	"user_project/internal/domain"
 	"user_project/internal/repository"
 	"user_project/internal/utils"
+	"user_project/internal/utils/blacklist"
 	users_v1 "user_project/pkg/grpc/users.v1"
 
 	"github.com/go-redis/redis/v8"
@@ -22,16 +22,18 @@ type Claims struct {
 }
 type PublicUserServiceServer struct {
 	users_v1.UnimplementedPublicUserServiceServer
-	Repo      *repository.UserRepository
-	Redis     *redis.Client
-	SecretKey string
+	Repo           *repository.UserRepository
+	Redis          *redis.Client
+	RedisBlacklist *blacklist.RedisBlacklist
+	SecretKey      string
 }
 
 func NewPublicUserServiceServer(repo *repository.UserRepository, redis *redis.Client, secretKey string) *PublicUserServiceServer {
 	return &PublicUserServiceServer{
-		Repo:      repo,
-		Redis:     redis,
-		SecretKey: secretKey,
+		Repo:           repo,
+		Redis:          redis,
+		RedisBlacklist: blacklist.NewRedisBlacklist(redis, blacklist.UserBlackList, blacklist.TokenBlackList),
+		SecretKey:      secretKey,
 	}
 }
 
@@ -58,7 +60,7 @@ func (s *PublicUserServiceServer) Register(ctx context.Context, req *users_v1.Re
 		return nil, status.Error(codes.Internal, "Failed to create user")
 	}
 
-	token, err := utils.GenerateToken(user, s.SecretKey)
+	token, err := utils.GenerateToken(utils.TokenParams{ID: user.ID, Role: string(user.Role)}, s.SecretKey)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Failed to generate token")
 	}
@@ -79,12 +81,11 @@ func (s *PublicUserServiceServer) Login(ctx context.Context, req *users_v1.Login
 		return nil, status.Error(codes.Unauthenticated, "Invalid password")
 	}
 
-	isBanned, _ := s.Redis.SIsMember(ctx, "blacklist", user.ID).Result()
-	if isBanned {
-		return nil, status.Error(codes.PermissionDenied, "User is banned")
+	if err := s.RedisBlacklist.CheckUser(ctx, user.ID); err != nil {
+		return nil, err
 	}
 
-	token, err := utils.GenerateToken(user, s.SecretKey)
+	token, err := utils.GenerateToken(utils.TokenParams{ID: user.ID, Role: string(user.Role)}, s.SecretKey)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Failed to generate token")
 	}
@@ -106,26 +107,22 @@ func (s *PublicUserServiceServer) Revalidate(ctx context.Context, req *users_v1.
 		return nil, err
 	}
 
-	isTokenBlacklisted, _ := s.Redis.SIsMember(ctx, "token_blacklist", tokenString).Result()
-	if isTokenBlacklisted {
-		return nil, status.Error(codes.Unauthenticated, "Token is blacklisted")
+	if err := s.RedisBlacklist.CheckUser(ctx, claims.ID); err != nil {
+		return nil, err
 	}
 
-	newClaims := &Claims{
-		ID:   claims.ID,
-		Role: claims.Role,
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Hour).Unix(),
-		},
+	if err := s.RedisBlacklist.CheckToken(ctx, tokenString); err != nil {
+		return nil, err
 	}
-	newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, newClaims)
-	newTokenString, err := newToken.SignedString([]byte(s.SecretKey))
+
+	token, err := utils.GenerateToken(utils.TokenParams{ID: claims.ID, Role: string(claims.Role)}, s.SecretKey)
+
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Failed to generate new token")
 	}
 
 	return &users_v1.RevalidateResponse{
-		Token:   newTokenString,
+		Token:   token,
 		Message: "Token revalidated successfully",
 	}, nil
 }
@@ -136,21 +133,13 @@ func (s *PublicUserServiceServer) Logout(ctx context.Context, req *users_v1.Logo
 		return nil, err
 	}
 
-	claims, err := utils.ParseAndValidateToken(tokenString, s.SecretKey)
+	_, err = utils.ParseAndValidateToken(tokenString, s.SecretKey)
 	if err != nil {
 		return nil, err
 	}
 
-	ttl := time.Unix(claims.ExpiresAt, 0).Sub(time.Now())
-	if ttl <= 0 {
-		return &users_v1.LogoutResponse{Message: "Token already expired"}, nil
-	}
-
-	if err := s.Redis.SAdd(ctx, "token_blacklist", tokenString).Err(); err != nil {
-		return nil, status.Error(codes.Internal, "Failed to blacklist token")
-	}
-	if err := s.Redis.Expire(ctx, "token_blacklist", ttl).Err(); err != nil {
-		return nil, status.Error(codes.Internal, "Failed to set TTL")
+	if err := s.RedisBlacklist.CheckToken(ctx, tokenString); err != nil {
+		return nil, err
 	}
 
 	return &users_v1.LogoutResponse{Message: "Logged out successfully"}, nil
