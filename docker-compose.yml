@@ -10,6 +10,8 @@ services:
       POSTGRES_DB: mydb
     ports:
       - "5432:5432"
+    networks:
+      - auth-network
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -27,6 +29,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - auth-network
 
   app:
     build: .
@@ -38,6 +42,7 @@ services:
     ports:
       - "50054:50054"
       - "50055:50055"
+      - "8080:8080"
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
@@ -46,6 +51,20 @@ services:
       - DB_NAME=mydb
       - REDIS_ADDR=redis:6379
       - SECRET_KEY=your-secret-key
+    networks:
+      - auth-network
+  http-client:
+    build: 
+      context: .
+      dockerfile: Dockerfile.client
+    ports:
+      - "8081:8081"
+    networks:
+      - auth-network
 
 volumes:
   postgres_data:
+
+networks:
+  auth-network:
+    driver: bridge

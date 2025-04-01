@@ -135,24 +135,24 @@ func (s *InternalUserServiceServer) BanUser(ctx context.Context, req *users_v1.B
 	return &users_v1.BanUserResponse{Message: "User banned successfully"}, nil
 }
 
-func (s *InternalUserServiceServer) Authorize(ctx context.Context, req *users_v1.AuthorizeRequest) (*users_v1.AuthorizeResponse, error) {
-	tokenString, err := utils.ExtractTokenFromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
+// func (s *InternalUserServiceServer) Authorize(ctx context.Context, req *users_v1.AuthorizeRequest) (*users_v1.AuthorizeResponse, error) {
+// 	tokenString, err := utils.ExtractTokenFromContext(ctx)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	claims, err := utils.ParseAndValidateToken(tokenString, s.SecretKey)
-	if err != nil {
-		return nil, err
-	}
+// 	claims, err := utils.ParseAndValidateToken(tokenString, s.SecretKey)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	return &users_v1.AuthorizeResponse{
-		IsValid: true,
-		UserId:  claims.ID,
-		Role:    users_v1.Role(users_v1.Role_value[claims.Role]),
-		Message: "Successful authorized",
-	}, nil
-}
+// 	return &users_v1.AuthorizeResponse{
+// 		IsValid: true,
+// 		UserId:  claims.ID,
+// 		Role:    users_v1.Role(users_v1.Role_value[claims.Role]),
+// 		Message: "Successful authorized",
+// 	}, nil
+// }
 
 func (s *InternalUserServiceServer) ListUsers(ctx context.Context, req *users_v1.ListUsersRequest) (*users_v1.ListUsersResponse, error) {
 	users, total, err := s.Repo.ListUsers(ctx, int(req.Page), int(req.PageSize), req.EmailFilter)
