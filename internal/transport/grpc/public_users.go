@@ -111,7 +111,7 @@ func (s *PublicUserServiceServer) AuthorizeOAuth(ctx context.Context, req *users
 		return nil, status.Error(codes.InvalidArgument, "Неверный клиент или redirect_uri")
 	}
 
-	redirectURI := fmt.Sprintf("http://localhost:8080/login?client_id=%s&redirect_uri=%s&response_type=%s", req.ClientId, req.RedirectUri, req.ResponseType)
+	redirectURI := fmt.Sprintf("http://localhost:8082/login?client_id=%s&redirect_uri=%s&response_type=%s", req.ClientId, req.RedirectUri, req.ResponseType)
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		log.Printf("No metadata in request")
