@@ -46,6 +46,10 @@ func main() {
 	db.AutoMigrate(&domain.AuthorizationCode{})
 	db.AutoMigrate(&domain.Session{})
 
+	if err := seedClient(db); err != nil {
+		log.Fatal(err)
+	}
+
 	redisClient := redis.NewClient(&redis.Options{Addr: redisAddr})
 	_, err = redisClient.Ping(context.Background()).Result()
 	if err != nil {
@@ -212,4 +216,26 @@ func loginFormHandler(w http.ResponseWriter, r *http.Request) {
 		log.Printf("redirect to %s", authURL)
 		http.Redirect(w, r, authURL, http.StatusFound)
 	}
+}
+
+func seedClient(db *gorm.DB) error {
+	var count int64
+	clientID := "wem7LcxWDUArXEm-0e4nsEjkwsroaXU_"
+
+	err := db.Model(&domain.Client{}).Where("id = ?", clientID).Count(&count).Error
+	if err != nil {
+		return err
+	}
+
+	if count == 0 {
+		client := domain.Client{
+			ID:          clientID,
+			Secret:      "XjDrJbBpJ6akhpwz5Jn070Bypajst3Nkb8wepVWyqEDLjnV4gxsW0nD8zctByj8l",
+			Name:        "API_GATEWAY",
+			RedirectURI: "http://localhost:3000/",
+		}
+		return db.Create(&client).Error
+	}
+
+	return nil
 }
