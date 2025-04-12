@@ -168,9 +168,9 @@ func (s *PublicUserServiceServer) AuthorizeOAuth(ctx context.Context, req *users
 }
 
 func (s *PublicUserServiceServer) Token(ctx context.Context, req *users_v1.TokenRequest) (*users_v1.TokenResponse, error) {
-	if req.GrantType != "authorization_code" {
-		return nil, status.Error(codes.InvalidArgument, "Неподдерживаемый тип гранта")
-	}
+	// if req.GrantType != "authorization_code" {
+	// 	return nil, status.Error(codes.InvalidArgument, "Неподдерживаемый тип гранта")
+	// }
 	authCode, err := s.ClientRepo.GetAuthorizationCode(ctx, req.Code)
 	if err != nil || authCode.IsExpired() {
 		return nil, status.Error(codes.InvalidArgument, "Неверный или просроченный код")
