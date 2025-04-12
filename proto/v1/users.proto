@@ -19,7 +19,7 @@ service PublicUserService {
             body: "*"
         };
     };
-    rpc Authorize(AuthorizeRequest) returns (AuthorizeResponse) {
+    rpc AuthorizeOAuth(AuthorizeOAuthRequest) returns (AuthorizeOAuthResponse) {
         option (google.api.http) = {
             get: "/v1/authorize"
         };
@@ -61,16 +61,25 @@ message RegisterClientResponse {
     string client_secret = 2;
 }
 
-message AuthorizeRequest {
+message AuthorizeOAuthRequest {
     string client_id = 1;
     string redirect_uri = 2;
     string response_type = 3;
     string state = 4;
 }
 
-message AuthorizeResponse {
+message AuthorizeOAuthResponse {
     string redirect_uri = 1;
     string message = 2;
+}
+
+message AuthorizeRequest {}
+
+message AuthorizeResponse {
+    bool is_valid = 1; 
+    string user_id = 2;
+    Role role = 3;
+    string message = 4;
 }
 
 message TokenRequest {

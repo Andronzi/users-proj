@@ -20,7 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	PublicUserService_RegisterClient_FullMethodName = "/users.v1.PublicUserService/RegisterClient"
-	PublicUserService_Authorize_FullMethodName      = "/users.v1.PublicUserService/Authorize"
+	PublicUserService_AuthorizeOAuth_FullMethodName = "/users.v1.PublicUserService/AuthorizeOAuth"
 	PublicUserService_Token_FullMethodName          = "/users.v1.PublicUserService/Token"
 	PublicUserService_Login_FullMethodName          = "/users.v1.PublicUserService/Login"
 	PublicUserService_Register_FullMethodName       = "/users.v1.PublicUserService/Register"
@@ -33,7 +33,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PublicUserServiceClient interface {
 	RegisterClient(ctx context.Context, in *RegisterClientRequest, opts ...grpc.CallOption) (*RegisterClientResponse, error)
-	Authorize(ctx context.Context, in *AuthorizeRequest, opts ...grpc.CallOption) (*AuthorizeResponse, error)
+	AuthorizeOAuth(ctx context.Context, in *AuthorizeOAuthRequest, opts ...grpc.CallOption) (*AuthorizeOAuthResponse, error)
 	Token(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*TokenResponse, error)
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
@@ -59,10 +59,10 @@ func (c *publicUserServiceClient) RegisterClient(ctx context.Context, in *Regist
 	return out, nil
 }
 
-func (c *publicUserServiceClient) Authorize(ctx context.Context, in *AuthorizeRequest, opts ...grpc.CallOption) (*AuthorizeResponse, error) {
+func (c *publicUserServiceClient) AuthorizeOAuth(ctx context.Context, in *AuthorizeOAuthRequest, opts ...grpc.CallOption) (*AuthorizeOAuthResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(AuthorizeResponse)
-	err := c.cc.Invoke(ctx, PublicUserService_Authorize_FullMethodName, in, out, cOpts...)
+	out := new(AuthorizeOAuthResponse)
+	err := c.cc.Invoke(ctx, PublicUserService_AuthorizeOAuth_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func (c *publicUserServiceClient) Revalidate(ctx context.Context, in *Revalidate
 // for forward compatibility.
 type PublicUserServiceServer interface {
 	RegisterClient(context.Context, *RegisterClientRequest) (*RegisterClientResponse, error)
-	Authorize(context.Context, *AuthorizeRequest) (*AuthorizeResponse, error)
+	AuthorizeOAuth(context.Context, *AuthorizeOAuthRequest) (*AuthorizeOAuthResponse, error)
 	Token(context.Context, *TokenRequest) (*TokenResponse, error)
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
 	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
@@ -143,8 +143,8 @@ type UnimplementedPublicUserServiceServer struct{}
 func (UnimplementedPublicUserServiceServer) RegisterClient(context.Context, *RegisterClientRequest) (*RegisterClientResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RegisterClient not implemented")
 }
-func (UnimplementedPublicUserServiceServer) Authorize(context.Context, *AuthorizeRequest) (*AuthorizeResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Authorize not implemented")
+func (UnimplementedPublicUserServiceServer) AuthorizeOAuth(context.Context, *AuthorizeOAuthRequest) (*AuthorizeOAuthResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method AuthorizeOAuth not implemented")
 }
 func (UnimplementedPublicUserServiceServer) Token(context.Context, *TokenRequest) (*TokenResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Token not implemented")
@@ -200,20 +200,20 @@ func _PublicUserService_RegisterClient_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
-func _PublicUserService_Authorize_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AuthorizeRequest)
+func _PublicUserService_AuthorizeOAuth_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AuthorizeOAuthRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(PublicUserServiceServer).Authorize(ctx, in)
+		return srv.(PublicUserServiceServer).AuthorizeOAuth(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: PublicUserService_Authorize_FullMethodName,
+		FullMethod: PublicUserService_AuthorizeOAuth_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(PublicUserServiceServer).Authorize(ctx, req.(*AuthorizeRequest))
+		return srv.(PublicUserServiceServer).AuthorizeOAuth(ctx, req.(*AuthorizeOAuthRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -320,8 +320,8 @@ var PublicUserService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _PublicUserService_RegisterClient_Handler,
 		},
 		{
-			MethodName: "Authorize",
-			Handler:    _PublicUserService_Authorize_Handler,
+			MethodName: "AuthorizeOAuth",
+			Handler:    _PublicUserService_AuthorizeOAuth_Handler,
 		},
 		{
 			MethodName: "Token",
