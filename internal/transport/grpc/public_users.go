@@ -109,7 +109,7 @@ func (s *PublicUserServiceServer) AuthorizeOAuth(ctx context.Context, req *users
 
 	log.Printf("Redirect req = %s, client redirect is %s", client.RedirectURI, req.RedirectUri)
 
-	if err != nil || strings.Contains(req.RedirectUri, client.RedirectURI) {
+	if err != nil || !strings.Contains(req.RedirectUri, client.RedirectURI) {
 		return nil, status.Error(codes.InvalidArgument, "Неверный клиент или redirect_uri")
 	}
 
