@@ -127,7 +127,7 @@ func main() {
 }
 
 func redirectHandler(ctx context.Context, w http.ResponseWriter, resp proto.Message) error {
-	if authResp, ok := resp.(*users_v1.AuthorizeResponse); ok {
+	if authResp, ok := resp.(*users_v1.AuthorizeOAuthResponse); ok {
 		if authResp.RedirectUri != "" {
 			w.Header().Set("Location", authResp.RedirectUri)
 			w.WriteHeader(http.StatusFound)
@@ -144,6 +144,8 @@ func loginFormHandler(w http.ResponseWriter, r *http.Request) {
 		redirectURI := r.URL.Query().Get("redirect_uri")
 		responseType := r.URL.Query().Get("response_type")
 		state := r.URL.Query().Get("state")
+
+		log.Printf("Params: %s, %s", clientID, redirectURI)
 
 		fmt.Fprintf(w, `
             <!DOCTYPE html>
@@ -168,8 +170,8 @@ func loginFormHandler(w http.ResponseWriter, r *http.Request) {
 		password := r.FormValue("password")
 		clientID := r.FormValue("client_id")
 		redirectURI := r.FormValue("redirect_uri")
-		responseType := r.FormValue("response_type")
-		state := r.FormValue("state")
+		// responseType := r.FormValue("response_type")
+		// state := r.FormValue("state")
 
 		conn, err := grpc.Dial(fmt.Sprintf("localhost:%d", 50054), grpc.WithInsecure())
 		if err != nil {
@@ -205,7 +207,7 @@ func loginFormHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		authURL := fmt.Sprintf("%s/v1/authorize?client_id=%s&redirect_uri=%s&response_type=%s&state=%s",
-			"http://localhost:8080", clientID, redirectURI, responseType, state)
+			"http://localhost:8080", clientID, redirectURI, "code", "state")
 
 		log.Printf("redirect to %s", authURL)
 		http.Redirect(w, r, authURL, http.StatusFound)
