@@ -171,6 +171,10 @@ func (s *PublicUserServiceServer) Token(ctx context.Context, req *users_v1.Token
 	// if req.GrantType != "authorization_code" {
 	// 	return nil, status.Error(codes.InvalidArgument, "Неподдерживаемый тип гранта")
 	// }
+	if req.Code == "" {
+		return nil, status.Error(codes.InvalidArgument, "Отправлен неверный код")
+	}
+
 	authCode, err := s.ClientRepo.GetAuthorizationCode(ctx, req.Code)
 
 	log.Printf("authCode userId = %s, clientId = %s, expires = %s", authCode.UserID, authCode.ClientID, authCode.ExpiresAt)
