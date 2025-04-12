@@ -18,6 +18,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/rs/cors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"gorm.io/driver/postgres"
@@ -126,8 +127,15 @@ func main() {
 	httpMux.Handle("/", mux)
 	httpMux.HandleFunc("/login", loginFormHandler)
 
+	handler := cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:3000"},
+		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization"},
+		AllowCredentials: true,
+	}).Handler(mux)
+
 	log.Printf("Gateway запущен на :8082")
-	log.Fatal(http.ListenAndServe(":8082", httpMux))
+	log.Fatal(http.ListenAndServe(":8082", handler))
 }
 
 func redirectHandler(ctx context.Context, w http.ResponseWriter, resp proto.Message) error {
