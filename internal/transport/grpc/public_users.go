@@ -107,17 +107,16 @@ func (s *PublicUserServiceServer) AuthorizeOAuth(ctx context.Context, req *users
 
 	client, err := s.ClientRepo.GetClientByID(ctx, req.ClientId)
 
-	log.Printf("RedirectURI, %s, %s", client.RedirectURI, req.RedirectUri)
-
 	if err != nil || strings.Contains(req.RedirectUri, client.RedirectURI) {
 		return nil, status.Error(codes.InvalidArgument, "Неверный клиент или redirect_uri")
 	}
 
+	redirectURI := fmt.Sprintf("http://localhost:8080/login?client_id=%s&redirect_uri=%s&response_type=%s", req.ClientId, req.RedirectUri, req.ResponseType)
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		log.Printf("No metadata in request")
 		return &users_v1.AuthorizeOAuthResponse{
-			RedirectUri: "http://localhost:8080/login",
+			RedirectUri: redirectURI,
 			Message:     "Требуется аутентификация",
 		}, nil
 	}
@@ -135,7 +134,7 @@ func (s *PublicUserServiceServer) AuthorizeOAuth(ctx context.Context, req *users
 	if sessionID == "" {
 		log.Printf("No session_id found in metadata")
 		return &users_v1.AuthorizeOAuthResponse{
-			RedirectUri: "http://localhost:8080/login",
+			RedirectUri: redirectURI,
 			Message:     "Требуется аутентификация",
 		}, nil
 	}
@@ -143,7 +142,7 @@ func (s *PublicUserServiceServer) AuthorizeOAuth(ctx context.Context, req *users
 	session, err := s.ClientRepo.GetSession(ctx, sessionID)
 	if err != nil || session.IsExpired() {
 		return &users_v1.AuthorizeOAuthResponse{
-			RedirectUri: "http://localhost:8080/login",
+			RedirectUri: redirectURI,
 			Message:     "Сессия недействительна",
 		}, nil
 	}
@@ -159,7 +158,7 @@ func (s *PublicUserServiceServer) AuthorizeOAuth(ctx context.Context, req *users
 	if err := s.ClientRepo.SaveAuthorizationCode(ctx, authCode); err != nil {
 		return nil, status.Error(codes.Internal, "Не удалось сохранить код")
 	}
-	redirectURI := fmt.Sprintf("%s?code=%s&state=%s", req.RedirectUri, code, req.State)
+	redirectURI = fmt.Sprintf("%s?code=%s&state=%s", req.RedirectUri, code, req.State)
 	return &users_v1.AuthorizeOAuthResponse{
 		RedirectUri: redirectURI,
 		Message:     "Успешная авторизация",
