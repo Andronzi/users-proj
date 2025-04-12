@@ -172,11 +172,14 @@ func (s *PublicUserServiceServer) Token(ctx context.Context, req *users_v1.Token
 	// 	return nil, status.Error(codes.InvalidArgument, "Неподдерживаемый тип гранта")
 	// }
 	authCode, err := s.ClientRepo.GetAuthorizationCode(ctx, req.Code)
+
+	log.Printf("authCode userId = %s, clientId = %s, expires = %s", authCode.UserID, authCode.ClientID, authCode.ExpiresAt)
+
 	if err != nil || authCode.IsExpired() {
 		return nil, status.Error(codes.InvalidArgument, "Неверный или просроченный код")
 	}
 	if authCode.ClientID != req.ClientId {
-		return nil, status.Error(codes.InvalidArgument, "Неверный redirect_uri или client_id")
+		return nil, status.Error(codes.InvalidArgument, "Неверный client_id")
 	}
 
 	client, err := s.ClientRepo.GetClientByID(ctx, req.ClientId)
