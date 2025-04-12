@@ -175,7 +175,7 @@ func (s *PublicUserServiceServer) Token(ctx context.Context, req *users_v1.Token
 	if err != nil || authCode.IsExpired() {
 		return nil, status.Error(codes.InvalidArgument, "Неверный или просроченный код")
 	}
-	if authCode.RedirectURI != req.RedirectUri || authCode.ClientID != req.ClientId {
+	if authCode.ClientID != req.ClientId {
 		return nil, status.Error(codes.InvalidArgument, "Неверный redirect_uri или client_id")
 	}
 
