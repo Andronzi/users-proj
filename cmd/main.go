@@ -132,7 +132,7 @@ func main() {
 		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
 		AllowedHeaders:   []string{"Content-Type", "Authorization"},
 		AllowCredentials: true,
-	}).Handler(mux)
+	}).Handler(httpMux)
 
 	log.Printf("Gateway запущен на :8082")
 	log.Fatal(http.ListenAndServe(":8082", handler))
