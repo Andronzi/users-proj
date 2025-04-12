@@ -88,12 +88,22 @@ func main() {
 		internalSrv,
 		grpcserver.NewInternalUserServiceServer(userRepo, redisClient, blacklist, secretKey),
 	)
-	log.Printf("Internal server listening at %v", internalLis.Addr())
-	if err := internalSrv.Serve(internalLis); err != nil {
-		log.Fatalf("Failed to serve internal: %v", err)
-	}
+	go func() {
+		log.Printf("Internal server listening at %v", internalLis.Addr())
+		if err := internalSrv.Serve(internalLis); err != nil {
+			log.Fatalf("Failed to serve internal: %v", err)
+		}
+	}()
+
+	log.Printf("After Internal listening")
 
 	mux := runtime.NewServeMux(
+		runtime.WithIncomingHeaderMatcher(func(key string) (string, bool) {
+			if key == "Cookie" {
+				return "cookie", true
+			}
+			return runtime.DefaultHeaderMatcher(key)
+		}),
 		runtime.WithForwardResponseOption(redirectHandler),
 	)
 	opts := []grpc.DialOption{grpc.WithInsecure()}
@@ -102,7 +112,13 @@ func main() {
 		log.Fatal(err)
 	}
 
+	log.Printf("Before 8080 listening")
+
 	httpMux := http.NewServeMux()
+	err = users_v1.RegisterPublicUserServiceHandlerFromEndpoint(context.Background(), mux, "localhost:50054", opts)
+	if err != nil {
+		log.Fatal(err)
+	}
 	httpMux.Handle("/", mux)
 	httpMux.HandleFunc("/login", loginFormHandler)
 
@@ -134,7 +150,7 @@ func loginFormHandler(w http.ResponseWriter, r *http.Request) {
             <html>
             <head><title>Login</title></head>
             <body>
-                <form method="post" action="%s/v1/login">
+                <form method="post" action="%s/login">
                     <input type="hidden" name="client_id" value="%s">
                     <input type="hidden" name="redirect_uri" value="%s">
                     <input type="hidden" name="response_type" value="%s">
@@ -145,7 +161,7 @@ func loginFormHandler(w http.ResponseWriter, r *http.Request) {
                 </form>
             </body>
             </html>
-        `, "http://localhost:8081", clientID, redirectURI, responseType, state)
+        `, "http://localhost:8080", clientID, redirectURI, responseType, state)
 	} else if r.Method == "POST" {
 		r.ParseForm()
 		email := r.FormValue("email")
@@ -155,9 +171,10 @@ func loginFormHandler(w http.ResponseWriter, r *http.Request) {
 		responseType := r.FormValue("response_type")
 		state := r.FormValue("state")
 
-		conn, err := grpc.Dial(fmt.Sprintf("localhost%s", 5054), grpc.WithInsecure())
+		conn, err := grpc.Dial(fmt.Sprintf("localhost:%d", 50054), grpc.WithInsecure())
 		if err != nil {
 			http.Error(w, "Ошибка сервера", http.StatusInternalServerError)
+			log.Printf("Ошибка %v", err)
 			return
 		}
 		defer conn.Close()
@@ -169,6 +186,7 @@ func loginFormHandler(w http.ResponseWriter, r *http.Request) {
 		})
 		if err != nil {
 			http.Error(w, "Неверные учетные данные", http.StatusUnauthorized)
+			log.Printf("Failed login %v", err)
 			return
 		}
 
@@ -187,7 +205,9 @@ func loginFormHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		authURL := fmt.Sprintf("%s/v1/authorize?client_id=%s&redirect_uri=%s&response_type=%s&state=%s",
-			"http://localhost:8081", clientID, redirectURI, responseType, state)
+			"http://localhost:8080", clientID, redirectURI, responseType, state)
+
+		log.Printf("redirect to %s", authURL)
 		http.Redirect(w, r, authURL, http.StatusFound)
 	}
 }

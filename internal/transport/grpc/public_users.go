@@ -3,6 +3,8 @@ package grpc
 import (
 	"context"
 	"fmt"
+	"log"
+	"net/http"
 	"time"
 	"user_project/internal/domain"
 	"user_project/internal/repository"
@@ -108,14 +110,32 @@ func (s *PublicUserServiceServer) Authorize(ctx context.Context, req *users_v1.A
 	}
 
 	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok || len(md.Get("session_id")) == 0 {
+	if !ok {
+		log.Printf("No metadata in request")
 		return &users_v1.AuthorizeResponse{
 			RedirectUri: "http://localhost:8080/login",
 			Message:     "Требуется аутентификация",
 		}, nil
 	}
 
-	sessionID := md.Get("session_id")[0]
+	sessionID := ""
+	if cookies := md.Get("cookie"); len(cookies) > 0 {
+		cookieStr := cookies[0]
+		cookiesParsed, err := (&http.Request{Header: http.Header{"Cookie": []string{cookieStr}}}).Cookie("session_id")
+		if err == nil && cookiesParsed != nil {
+			sessionID = cookiesParsed.Value
+			log.Printf("Extracted session_id=%s from cookie", sessionID)
+		}
+	}
+
+	if sessionID == "" {
+		log.Printf("No session_id found in metadata")
+		return &users_v1.AuthorizeResponse{
+			RedirectUri: "http://localhost:8080/login",
+			Message:     "Требуется аутентификация",
+		}, nil
+	}
+
 	session, err := s.ClientRepo.GetSession(ctx, sessionID)
 	if err != nil || session.IsExpired() {
 		return &users_v1.AuthorizeResponse{
