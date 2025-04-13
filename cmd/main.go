@@ -173,7 +173,12 @@ func registerFormHandler(w http.ResponseWriter, r *http.Request) {
                     <input type="hidden" name="state" value="%s">
                     <label>Email:</label><input type="email" name="email" required><br>
                     <label>Password:</label><input type="password" name="password" required><br>
-                    <label>Role:</label><input type="text" name="role" required><br>
+					<label>Role:</label>
+                 	<select name="role" required>
+                        <option value="USER">User</option>
+                        <option value="EMPLOYEE">Employee</option>
+                        <option value="ADMIN">Admin</option>
+                    </select><br>
                     <button type="submit">Register</button>
                 </form>
             </body>
