@@ -100,6 +100,44 @@ func (s *PublicUserServiceServer) Register(ctx context.Context, req *users_v1.Re
 	}, nil
 }
 
+func (s *PublicUserServiceServer) RegisterOAuth(ctx context.Context, req *users_v1.RegisterOAuthRequest) (*users_v1.RegisterOAuthResponse, error) {
+	exists, err := s.UserRepo.ExistsByEmail(ctx, req.Email)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to check user existence")
+	}
+	if exists {
+		return nil, status.Error(codes.AlreadyExists, "Email already exists")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to hash password")
+	}
+
+	user := &domain.User{
+		Email:    req.Email,
+		Password: string(hashedPassword),
+		Role:     utils.GrpcToDomainRole(req.Role),
+	}
+	if err := s.UserRepo.Create(ctx, user); err != nil {
+		return nil, status.Error(codes.Internal, "Failed to create user")
+	}
+
+	sessionID := utils.GenerateRandomString(32)
+	session := &domain.Session{
+		ID:        sessionID,
+		UserID:    user.ID,
+		ExpiresAt: time.Now().Add(24 * time.Hour),
+	}
+	if err := s.ClientRepo.CreateSession(ctx, session); err != nil {
+		return nil, status.Error(codes.Internal, "Не удалось создать сессию")
+	}
+	return &users_v1.RegisterOAuthResponse{
+		SessionId: sessionID,
+		Message:   "Успешный вход",
+	}, nil
+}
+
 func (s *PublicUserServiceServer) AuthorizeOAuth(ctx context.Context, req *users_v1.AuthorizeOAuthRequest) (*users_v1.AuthorizeOAuthResponse, error) {
 	if req.ResponseType != "code" {
 		return nil, status.Error(codes.InvalidArgument, "Неподдерживаемый тип ответа")
