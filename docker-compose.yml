@@ -42,7 +42,7 @@ services:
     ports:
       - "50054:50054"
       - "50055:50055"
-      - "8080:8080"
+      - "8082:8082"
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
@@ -51,14 +51,6 @@ services:
       - DB_NAME=mydb
       - REDIS_ADDR=redis:6379
       - SECRET_KEY=your-secret-key
-    networks:
-      - auth-network
-  http-client:
-    build: 
-      context: .
-      dockerfile: Dockerfile.client
-    ports:
-      - "8081:8081"
     networks:
       - auth-network
 

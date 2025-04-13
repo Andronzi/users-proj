@@ -107,17 +107,18 @@ func (s *PublicUserServiceServer) AuthorizeOAuth(ctx context.Context, req *users
 
 	client, err := s.ClientRepo.GetClientByID(ctx, req.ClientId)
 
-	log.Printf("RedirectURI, %s, %s", client.RedirectURI, req.RedirectUri)
+	log.Printf("Redirect req = %s, client redirect is %s", client.RedirectURI, req.RedirectUri)
 
-	if err != nil || strings.Contains(req.RedirectUri, client.RedirectURI) {
+	if err != nil || !strings.Contains(req.RedirectUri, client.RedirectURI) {
 		return nil, status.Error(codes.InvalidArgument, "Неверный клиент или redirect_uri")
 	}
 
+	redirectURI := fmt.Sprintf("http://localhost:8082/login?client_id=%s&redirect_uri=%s&response_type=%s", req.ClientId, req.RedirectUri, req.ResponseType)
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		log.Printf("No metadata in request")
 		return &users_v1.AuthorizeOAuthResponse{
-			RedirectUri: "http://localhost:8080/login",
+			RedirectUri: redirectURI,
 			Message:     "Требуется аутентификация",
 		}, nil
 	}
@@ -135,7 +136,7 @@ func (s *PublicUserServiceServer) AuthorizeOAuth(ctx context.Context, req *users
 	if sessionID == "" {
 		log.Printf("No session_id found in metadata")
 		return &users_v1.AuthorizeOAuthResponse{
-			RedirectUri: "http://localhost:8080/login",
+			RedirectUri: redirectURI,
 			Message:     "Требуется аутентификация",
 		}, nil
 	}
@@ -143,7 +144,7 @@ func (s *PublicUserServiceServer) AuthorizeOAuth(ctx context.Context, req *users
 	session, err := s.ClientRepo.GetSession(ctx, sessionID)
 	if err != nil || session.IsExpired() {
 		return &users_v1.AuthorizeOAuthResponse{
-			RedirectUri: "http://localhost:8080/login",
+			RedirectUri: redirectURI,
 			Message:     "Сессия недействительна",
 		}, nil
 	}
@@ -159,7 +160,7 @@ func (s *PublicUserServiceServer) AuthorizeOAuth(ctx context.Context, req *users
 	if err := s.ClientRepo.SaveAuthorizationCode(ctx, authCode); err != nil {
 		return nil, status.Error(codes.Internal, "Не удалось сохранить код")
 	}
-	redirectURI := fmt.Sprintf("%s?code=%s&state=%s", req.RedirectUri, code, req.State)
+	redirectURI = fmt.Sprintf("%s?code=%s&state=%s", req.RedirectUri, code, req.State)
 	return &users_v1.AuthorizeOAuthResponse{
 		RedirectUri: redirectURI,
 		Message:     "Успешная авторизация",
@@ -167,15 +168,22 @@ func (s *PublicUserServiceServer) AuthorizeOAuth(ctx context.Context, req *users
 }
 
 func (s *PublicUserServiceServer) Token(ctx context.Context, req *users_v1.TokenRequest) (*users_v1.TokenResponse, error) {
-	if req.GrantType != "authorization_code" {
-		return nil, status.Error(codes.InvalidArgument, "Неподдерживаемый тип гранта")
+	// if req.GrantType != "authorization_code" {
+	// 	return nil, status.Error(codes.InvalidArgument, "Неподдерживаемый тип гранта")
+	// }
+	if req.Code == "" {
+		return nil, status.Error(codes.InvalidArgument, "Отправлен неверный код")
 	}
+
 	authCode, err := s.ClientRepo.GetAuthorizationCode(ctx, req.Code)
+
+	log.Printf("authCode userId = %s, clientId = %s, expires = %s", authCode.UserID, authCode.ClientID, authCode.ExpiresAt)
+
 	if err != nil || authCode.IsExpired() {
 		return nil, status.Error(codes.InvalidArgument, "Неверный или просроченный код")
 	}
-	if authCode.RedirectURI != req.RedirectUri || authCode.ClientID != req.ClientId {
-		return nil, status.Error(codes.InvalidArgument, "Неверный redirect_uri или client_id")
+	if authCode.ClientID != req.ClientId {
+		return nil, status.Error(codes.InvalidArgument, "Неверный client_id")
 	}
 
 	client, err := s.ClientRepo.GetClientByID(ctx, req.ClientId)

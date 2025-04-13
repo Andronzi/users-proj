@@ -18,6 +18,7 @@ import (
 
 	"github.com/go-redis/redis/v8"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
+	"github.com/rs/cors"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 	"gorm.io/driver/postgres"
@@ -116,7 +117,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("Before 8080 listening")
+	log.Printf("Before 8082 listening")
 
 	httpMux := http.NewServeMux()
 	err = users_v1.RegisterPublicUserServiceHandlerFromEndpoint(context.Background(), mux, "localhost:50054", opts)
@@ -126,8 +127,15 @@ func main() {
 	httpMux.Handle("/", mux)
 	httpMux.HandleFunc("/login", loginFormHandler)
 
-	log.Printf("Gateway запущен на :8080")
-	log.Fatal(http.ListenAndServe(":8080", httpMux))
+	handler := cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:3000"},
+		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization"},
+		AllowCredentials: true,
+	}).Handler(httpMux)
+
+	log.Printf("Gateway запущен на :8082")
+	log.Fatal(http.ListenAndServe(":8082", handler))
 }
 
 func redirectHandler(ctx context.Context, w http.ResponseWriter, resp proto.Message) error {
@@ -167,7 +175,7 @@ func loginFormHandler(w http.ResponseWriter, r *http.Request) {
                 </form>
             </body>
             </html>
-        `, "http://localhost:8080", clientID, redirectURI, responseType, state)
+        `, "http://localhost:8082", clientID, redirectURI, responseType, state)
 	} else if r.Method == "POST" {
 		r.ParseForm()
 		email := r.FormValue("email")
@@ -211,7 +219,7 @@ func loginFormHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		authURL := fmt.Sprintf("%s/v1/authorize?client_id=%s&redirect_uri=%s&response_type=%s&state=%s",
-			"http://localhost:8080", clientID, redirectURI, "code", "state")
+			"http://localhost:8082", clientID, redirectURI, "code", "state")
 
 		log.Printf("redirect to %s", authURL)
 		http.Redirect(w, r, authURL, http.StatusFound)
