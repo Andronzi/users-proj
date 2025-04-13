@@ -10,6 +10,7 @@ import (
 	"user_project/internal/domain"
 	"user_project/internal/repository"
 	grpcserver "user_project/internal/transport/grpc"
+	"user_project/internal/utils"
 	"user_project/internal/utils/blacklist"
 	"user_project/internal/utils/middleware"
 	users_v1 "user_project/pkg/grpc/users.v1"
@@ -20,7 +21,9 @@ import (
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/rs/cors"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/status"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -125,6 +128,7 @@ func main() {
 		log.Fatal(err)
 	}
 	httpMux.Handle("/", mux)
+	http.HandleFunc("/register", registerFormHandler)
 	httpMux.HandleFunc("/login", loginFormHandler)
 
 	handler := cors.New(cors.Options{
@@ -147,6 +151,87 @@ func redirectHandler(ctx context.Context, w http.ResponseWriter, resp proto.Mess
 		}
 	}
 	return nil
+}
+
+func registerFormHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	if r.Method == "GET" {
+		clientID := r.URL.Query().Get("client_id")
+		redirectURI := r.URL.Query().Get("redirect_uri")
+		responseType := r.URL.Query().Get("response_type")
+		state := r.URL.Query().Get("state")
+
+		fmt.Fprintf(w, `
+            <!DOCTYPE html>
+            <html>
+            <head><title>Register</title></head>
+            <body>
+                <form method="post" action="%s/register">
+                    <input type="hidden" name="client_id" value="%s">
+                    <input type="hidden" name="redirect_uri" value="%s">
+                    <input type="hidden" name="response_type" value="%s">
+                    <input type="hidden" name="state" value="%s">
+                    <label>Email:</label><input type="email" name="email" required><br>
+                    <label>Password:</label><input type="password" name="password" required><br>
+                    <label>Role:</label><input type="text" name="role" required><br>
+                    <button type="submit">Register</button>
+                </form>
+            </body>
+            </html>
+        `, "http://localhost:8082", clientID, redirectURI, responseType, state)
+	} else if r.Method == "POST" {
+		r.ParseForm()
+		email := r.FormValue("email")
+		password := r.FormValue("password")
+		role := r.FormValue("role")
+		clientID := r.FormValue("client_id")
+		redirectURI := r.FormValue("redirect_uri")
+		// responseType := r.FormValue("response_type")
+		// state := r.FormValue("state")
+
+		conn, err := grpc.Dial(fmt.Sprintf("localhost:%d", 50054), grpc.WithInsecure())
+		if err != nil {
+			http.Error(w, "Ошибка сервера", http.StatusInternalServerError)
+			log.Printf("Ошибка %v", err)
+			return
+		}
+		defer conn.Close()
+
+		client := users_v1.NewPublicUserServiceClient(conn)
+		resp, err := client.RegisterOAuth(context.Background(), &users_v1.RegisterOAuthRequest{
+			Email:    email,
+			Password: password,
+			Role:     utils.DomainToGrpcRole(domain.Role(role)),
+		})
+		if err != nil {
+			if status.Code(err) == codes.AlreadyExists {
+				http.Error(w, "Email already exists", http.StatusConflict)
+			} else {
+				http.Error(w, "Registration failed", http.StatusInternalServerError)
+			}
+			log.Printf("Failed registration %v", err)
+			return
+		}
+
+		http.SetCookie(w, &http.Cookie{
+			Name:     "session_id",
+			Value:    resp.SessionId,
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   false,
+			MaxAge:   24 * 60 * 60,
+		})
+
+		if clientID == "" || redirectURI == "" {
+			http.Error(w, "Отсутствуют параметры авторизации", http.StatusBadRequest)
+			return
+		}
+		authURL := fmt.Sprintf("%s/v1/authorize?client_id=%s&redirect_uri=%s&response_type=%s&state=%s",
+			"http://localhost:8082", clientID, redirectURI, "code", "state")
+
+		log.Printf("redirect to %s", authURL)
+		http.Redirect(w, r, authURL, http.StatusFound)
+	}
 }
 
 func loginFormHandler(w http.ResponseWriter, r *http.Request) {
