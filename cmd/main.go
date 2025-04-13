@@ -128,8 +128,8 @@ func main() {
 		log.Fatal(err)
 	}
 	httpMux.Handle("/", mux)
-	http.HandleFunc("/register", registerFormHandler)
-	http.HandleFunc("/login", loginFormHandler)
+	httpMux.HandleFunc("/register", registerFormHandler)
+	httpMux.HandleFunc("/login", loginFormHandler)
 
 	handler := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:3000"},
