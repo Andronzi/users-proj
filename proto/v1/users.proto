@@ -30,6 +30,12 @@ service PublicUserService {
             body: "*"
         };
     };
+    rpc RegisterOAuth(RegisterOAuthRequest) returns (RegisterOAuthResponse) {
+        option (google.api.http) = {
+            post: "/v1/register"
+            body: "*"
+        };
+    };
     rpc Login(LoginRequest) returns (LoginResponse) {
         option (google.api.http) = {
             post: "/v1/login"
@@ -59,6 +65,18 @@ message RegisterClientRequest {
 message RegisterClientResponse {
     string client_id = 1;
     string client_secret = 2;
+}
+
+message RegisterOAuthRequest {
+    string client_id = 1;
+    string redirect_uri = 2;
+    string response_type = 3;
+    string state = 4;
+}
+
+message RegisterOAuthResponse {
+    string redirect_uri = 1;
+    string message = 2;
 }
 
 message AuthorizeOAuthRequest {

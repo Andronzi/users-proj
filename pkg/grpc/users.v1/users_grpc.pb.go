@@ -22,6 +22,7 @@ const (
 	PublicUserService_RegisterClient_FullMethodName = "/users.v1.PublicUserService/RegisterClient"
 	PublicUserService_AuthorizeOAuth_FullMethodName = "/users.v1.PublicUserService/AuthorizeOAuth"
 	PublicUserService_Token_FullMethodName          = "/users.v1.PublicUserService/Token"
+	PublicUserService_RegisterOAuth_FullMethodName  = "/users.v1.PublicUserService/RegisterOAuth"
 	PublicUserService_Login_FullMethodName          = "/users.v1.PublicUserService/Login"
 	PublicUserService_Register_FullMethodName       = "/users.v1.PublicUserService/Register"
 	PublicUserService_Logout_FullMethodName         = "/users.v1.PublicUserService/Logout"
@@ -35,6 +36,7 @@ type PublicUserServiceClient interface {
 	RegisterClient(ctx context.Context, in *RegisterClientRequest, opts ...grpc.CallOption) (*RegisterClientResponse, error)
 	AuthorizeOAuth(ctx context.Context, in *AuthorizeOAuthRequest, opts ...grpc.CallOption) (*AuthorizeOAuthResponse, error)
 	Token(ctx context.Context, in *TokenRequest, opts ...grpc.CallOption) (*TokenResponse, error)
+	RegisterOAuth(ctx context.Context, in *RegisterOAuthRequest, opts ...grpc.CallOption) (*RegisterOAuthResponse, error)
 	Login(ctx context.Context, in *LoginRequest, opts ...grpc.CallOption) (*LoginResponse, error)
 	Register(ctx context.Context, in *RegisterRequest, opts ...grpc.CallOption) (*RegisterResponse, error)
 	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*LogoutResponse, error)
@@ -73,6 +75,16 @@ func (c *publicUserServiceClient) Token(ctx context.Context, in *TokenRequest, o
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(TokenResponse)
 	err := c.cc.Invoke(ctx, PublicUserService_Token_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *publicUserServiceClient) RegisterOAuth(ctx context.Context, in *RegisterOAuthRequest, opts ...grpc.CallOption) (*RegisterOAuthResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RegisterOAuthResponse)
+	err := c.cc.Invoke(ctx, PublicUserService_RegisterOAuth_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -126,6 +138,7 @@ type PublicUserServiceServer interface {
 	RegisterClient(context.Context, *RegisterClientRequest) (*RegisterClientResponse, error)
 	AuthorizeOAuth(context.Context, *AuthorizeOAuthRequest) (*AuthorizeOAuthResponse, error)
 	Token(context.Context, *TokenRequest) (*TokenResponse, error)
+	RegisterOAuth(context.Context, *RegisterOAuthRequest) (*RegisterOAuthResponse, error)
 	Login(context.Context, *LoginRequest) (*LoginResponse, error)
 	Register(context.Context, *RegisterRequest) (*RegisterResponse, error)
 	Logout(context.Context, *LogoutRequest) (*LogoutResponse, error)
@@ -148,6 +161,9 @@ func (UnimplementedPublicUserServiceServer) AuthorizeOAuth(context.Context, *Aut
 }
 func (UnimplementedPublicUserServiceServer) Token(context.Context, *TokenRequest) (*TokenResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Token not implemented")
+}
+func (UnimplementedPublicUserServiceServer) RegisterOAuth(context.Context, *RegisterOAuthRequest) (*RegisterOAuthResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RegisterOAuth not implemented")
 }
 func (UnimplementedPublicUserServiceServer) Login(context.Context, *LoginRequest) (*LoginResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Login not implemented")
@@ -232,6 +248,24 @@ func _PublicUserService_Token_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PublicUserServiceServer).Token(ctx, req.(*TokenRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PublicUserService_RegisterOAuth_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RegisterOAuthRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PublicUserServiceServer).RegisterOAuth(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PublicUserService_RegisterOAuth_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PublicUserServiceServer).RegisterOAuth(ctx, req.(*RegisterOAuthRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -326,6 +360,10 @@ var PublicUserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Token",
 			Handler:    _PublicUserService_Token_Handler,
+		},
+		{
+			MethodName: "RegisterOAuth",
+			Handler:    _PublicUserService_RegisterOAuth_Handler,
 		},
 		{
 			MethodName: "Login",
