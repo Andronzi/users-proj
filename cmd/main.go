@@ -8,12 +8,16 @@ import (
 	"net/http"
 	"os"
 	"user_project/internal/domain"
+	middlewares "user_project/internal/middleware"
 	"user_project/internal/repository"
 	grpcserver "user_project/internal/transport/grpc"
 	"user_project/internal/utils"
 	"user_project/internal/utils/blacklist"
 	"user_project/internal/utils/middleware"
 	users_v1 "user_project/pkg/grpc/users.v1"
+	"user_project/pkg/logger"
+
+	"go.uber.org/zap"
 
 	"google.golang.org/protobuf/proto"
 
@@ -29,6 +33,28 @@ import (
 )
 
 func main() {
+	logger.InitLogger()
+	defer logger.Logger.Sync()
+
+	testFile, err := os.OpenFile("/var/log/myapp.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		log.Fatalf("Can not work with log file: %v", err)
+		os.Exit(1)
+	}
+	testFile.Close()
+
+	if logger.Logger == nil {
+		log.Fatal("Logger initialization failed")
+	}
+
+	logger.Logger.Info("Starting application", zap.String("users-service", "main.go"))
+
+	tp, err := middlewares.InitTracer()
+	if err != nil {
+		logger.Logger.Fatal("Failed to initialize tracer", zap.Error(err))
+	}
+	defer tp.Shutdown(context.Background())
+
 	dbHost := os.Getenv("DB_HOST")
 	dbPort := os.Getenv("DB_PORT")
 	dbUser := os.Getenv("DB_USER")
@@ -66,7 +92,12 @@ func main() {
 	secretKey = "your-secret-key"
 
 	publicLis, _ := net.Listen("tcp", ":50054")
-	publicSrv := grpc.NewServer()
+	publicSrv := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(
+			middlewares.TracingInterceptor,
+			middlewares.IdempotencyInterceptor,
+		),
+	)
 	reflection.Register(publicSrv)
 	users_v1.RegisterPublicUserServiceServer(publicSrv, grpcserver.NewPublicUserServiceServer(userRepo, clientRepo, redisClient, secretKey))
 	go func() {
@@ -87,6 +118,8 @@ func main() {
 	blacklist := blacklist.NewRedisBlacklist(redisClient, blacklist.UserBlackList, blacklist.TokenBlackList)
 	internalSrv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
+			middlewares.TracingInterceptor,
+			middlewares.IdempotencyInterceptor,
 			middleware.BlacklistMiddleware(secretKey, blacklist),
 			middleware.RoleRequiredMiddleware(roleSafeMethods),
 		),
