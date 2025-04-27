@@ -330,7 +330,7 @@ func seedClient(db *gorm.DB) error {
 			ID:          clientID,
 			Secret:      "XjDrJbBpJ6akhpwz5Jn070Bypajst3Nkb8wepVWyqEDLjnV4gxsW0nD8zctByj8l",
 			Name:        "API_GATEWAY",
-			RedirectURI: "http://localhost:3000/",
+			RedirectURI: "http://host.docker.internal:3000/",
 		}
 		return db.Create(&client).Error
 	}
