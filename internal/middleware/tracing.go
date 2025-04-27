@@ -37,7 +37,7 @@ func InitTracer() (*sdktrace.TracerProvider, error) {
 		),
 		sdktrace.WithResource(resource.NewWithAttributes(
 			semconv.SchemaURL,
-			semconv.ServiceNameKey.String("credit-origination-service"),
+			semconv.ServiceNameKey.String("users-service"),
 			attribute.String("environment", "development"),
 		)),
 	)
@@ -55,11 +55,11 @@ func InitTracer() (*sdktrace.TracerProvider, error) {
 func TracingInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
 	ctx = extractTraceContext(ctx)
 
-	ctx, span := otel.Tracer("grpc").Start(ctx, info.FullMethod,
+	ctx, span := otel.Tracer("users-service").Start(ctx, info.FullMethod,
 		trace.WithSpanKind(trace.SpanKindServer),
 		trace.WithAttributes(
 			semconv.RPCSystemGRPC,
-			semconv.RPCServiceKey.String("credit.origination.v1"),
+			semconv.RPCServiceKey.String("users.service.v1"),
 			semconv.RPCMethodKey.String(info.FullMethod),
 		))
 	defer span.End()
@@ -113,14 +113,22 @@ func TracingInterceptor(ctx context.Context, req interface{}, info *grpc.UnarySe
 func extractTraceContext(ctx context.Context) context.Context {
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
+		logger.Logger.Debug("No metadata in context")
 		return ctx
 	}
+
+	carrier := propagation.HeaderCarrier{}
 
 	ctx = otel.GetTextMapPropagator().Extract(ctx, propagation.HeaderCarrier(md))
 
 	if traceParent := md.Get("traceparent"); len(traceParent) > 0 {
-		ctx = metadata.NewOutgoingContext(ctx, metadata.Pairs("traceparent", traceParent[0]))
+		carrier.Set("traceparent", traceParent[0])
 	}
+	if traceState := md.Get("tracestate"); len(traceState) > 0 {
+		carrier.Set("tracestate", traceState[0])
+	}
+
+	ctx = otel.GetTextMapPropagator().Extract(ctx, carrier)
 
 	return ctx
 }
